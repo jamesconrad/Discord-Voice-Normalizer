@@ -1,8 +1,23 @@
+//https://discord.js.org/#/docs/main/stable/general/welcome
+
 const Discord = require('discord.js');
 const {
     prefix,
     token,
 } = require('./config.json');
+
+const { Readable } = require('stream');
+
+const SILENCE_FRAME = Buffer.from([0xF8, 0xFF, 0xFE]);
+
+class Silence extends Readable {
+  _read() {
+    this.push(SILENCE_FRAME);
+  }
+}
+
+// play silence indefinitely, this should allow you to continue receiving audio
+//voiceConnection.play(new Silence(), { type: 'opus' });
 
 /*
 DATA STRUCTURES:
@@ -12,11 +27,13 @@ Map guildNormals(voiceChannel.id, normal)
 normal {
     voiceChannel: voiceChannel,
     connection: null,
+    voiceReceiver,
     users: new Map(),
 }
 
 userStats {
     user: user,
+    audioStream,
     percievedAverageVolume: 0,
     percievedSamples: 0,
 }
@@ -25,6 +42,7 @@ userStats {
 
 const guildNormals = new Map();
 const client = new Discord.Client();
+
 client.login(token);
 
 client.once('ready', () => {
@@ -43,22 +61,41 @@ client.on('message', async message => {
 
     const guildNomral = guildNormals.get(message.guild.id);
 
-    if (message.content.startsWith(`${prefix}help`)) {
+    const args = message.content.slice(prefix.length).split(/ +/);
+    const command = args.shift().toLowerCase();
+
+    if (command == 'help') {
         message.channel.send('!joinvoice : enters users voice channel and begins calculating normals.\n!normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.\n!leavevoice to have the bot exit the voice channel.')
         return;
-    }else if (message.content.startsWith(`${prefix}joinvoice`)) {
+    }else if (command == 'joinvoice') {
         joinChannel(message);
         return;
-    }else if (message.content.startsWith(`${prefix}normalize`)) {
+    }else if (command == 'normalize') {
         return;
-    }else if (message.content.startsWith(`${prefix}leavevoice`)) {
+    }else if (command == 'leavevoice') {
         guildNormals.delete(message.member.voiceChannel.id);
+        message.member.voiceChannel.leave();
         return;
-    }else if (message.content.startsWith(`${prefix}status`)) {
+    }else if (command == 'status') {
         guildNormals.forEach(guild => {
             guild.userStats.forEach(user => console.log(user.user.username));
         })
         return;
+    }else if (command == 'boop') {
+        guildNormals.get(message.member.user.id).connection.playFile('./blop.wav');
+        return;
+    }else if (command === 'avatar') {
+            if (!message.mentions.users.size) {
+                return message.channel.send(`Your avatar: <${message.author.displayAvatarURL}>`);
+            }
+        
+            const avatarList = message.mentions.users.map(user => {
+                return `${user.username}'s avatar: <${user.displayAvatarURL}>`;
+            });
+        
+            // send the entire array of strings as a message
+            // by default, discord.js will `.join()` the array with `\n`
+            message.channel.send(avatarList);
     } else {
         message.channel.send('Invalid command, try !help.')
     }
@@ -73,11 +110,12 @@ client.on('voiceStateUpdate', async (oldMember, newMember) =>{
 
 async function userJoinedVoice(member){ 
     //console.log(member.user.username + ' joined ' + member.voiceChannel.name)
-    var guildNormal = guildNormals.get(member.voiceChannel.id);
+    const guildNormal = guildNormals.get(member.voiceChannel.id);
     if (guildNormal){
         if (!guildNormal.userStats.get(member.user.id)){
             const newuser = {
                 user: member.user,
+                //audioStream: guildNormal.voiceReceiver.createStream(member, {}),
                 percievedAverageVolume: 0,
                 percievedSamples: 0,
             }
@@ -88,7 +126,7 @@ async function userJoinedVoice(member){
 
 async function userLeftVoice(member){
     //console.log(member.user.username + ' left ' + member.voiceChannel.name)
-    var guildNormal = guildNormals.get(member.voiceChannel.id);
+    const guildNormal = guildNormals.get(member.voiceChannel.id);
     if (guildNormal){
         if (guildNormal.userStats.get(member.user.id)){
             guildNormal.userStats.delete(member.user.id);
@@ -117,6 +155,7 @@ async function joinChannel(message, guildNormal) {
         const normals = {
             voiceChannel: voiceChannel,
             connection: null,
+            voiceReceiver: null,
             userStats: new Map(),
         };
         
@@ -132,8 +171,31 @@ async function joinChannel(message, guildNormal) {
         guildNormals.set(voiceChannel.id, normals);
         
         try {
-            var connection = await voiceChannel.join();
+            const connection = await voiceChannel.join().then(conn => {
+                //const dispatcher = conn.playFile(new Silence(), { type: 'opus' });
+                const dispatcher = conn.playFile('./blop.mp3');
+
+                const receiver = conn.createReceiver();
+                conn.on('speaking', (user, speaking) => {
+                    if (speaking){
+                        console.log('Speaker detected: ' + user.username);
+                        const audioStream = receiver.createPCMStream(user);
+                        audioStream.on('readable', () => {
+                            let chunk;
+                            while (null !== (chunk = audioStream.read())){
+                                let sampleTotal = 0;
+                                for (const c of chunk){
+                                    sampleTotal += c*c;
+                                }
+                                let avg = sampleTotal/chunk.length;
+                                console.log(`Average sample volume: ${avg}`);
+                            }
+                        })
+                    }
+                })
+            });
             normals.connection = connection;
+            //normals.voiceReceiver = connection.createReceiver();
             //console.log(guildNormals.get(message.guild.id));
         } catch (err) {
             console.log(err);
