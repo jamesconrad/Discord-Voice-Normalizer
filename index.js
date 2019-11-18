@@ -65,7 +65,7 @@ client.on('message', async message => {
     const command = args.shift().toLowerCase();
 
     if (command == 'help') {
-        message.channel.send('!joinvoice : enters users voice channel and begins calculating normals.\n!normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.\n!leavevoice to have the bot exit the voice channel.')
+        message.channel.send(`${prefix}joinvoice : enters users voice channel and begins calculating normals.\n${prefix}normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.\n${prefix}leavevoice to have the bot exit the voice channel.`)
         return;
     }else if (command == 'joinvoice') {
         joinChannel(message);
@@ -73,8 +73,8 @@ client.on('message', async message => {
     }else if (command == 'normalize') {
         return;
     }else if (command == 'leavevoice') {
-        guildNormals.delete(message.member.voiceChannel.id);
-        message.member.voiceChannel.leave();
+        guildNormals.delete(message.member.voice.channel.id);
+        message.member.voice.channel.leave();
         return;
     }else if (command == 'status') {
         guildNormals.forEach(guild => {
@@ -102,15 +102,15 @@ client.on('message', async message => {
 });
 
 
-client.on('voiceStateUpdate', async (oldMember, newMember) =>{
-    if (oldMember.voiceChannel === undefined) userJoinedVoice(newMember);
-    else if (newMember.voiceChannel === undefined) userLeftVoice(oldMember);
+client.on('voiceStateUpdate', async (oldMember, newMember) => {
+    if (oldMember.channelID === null || oldMember.channelID === undefined) userJoinedVoice(newMember);
+    else if (newMember.channelID === null) userLeftVoice(oldMember);
     else userMovedVoice(oldMember, newMember);
 });
 
-async function userJoinedVoice(member){ 
-    //console.log(member.user.username + ' joined ' + member.voiceChannel.name)
-    const guildNormal = guildNormals.get(member.voiceChannel.id);
+async function userJoinedVoice(voiceState){ 
+    let member = voiceState.member;
+    const guildNormal = guildNormals.get(member.voice.channel.id);
     if (guildNormal){
         if (!guildNormal.userStats.get(member.user.id)){
             const newuser = {
@@ -124,9 +124,9 @@ async function userJoinedVoice(member){
     }
 }
 
-async function userLeftVoice(member){
-    //console.log(member.user.username + ' left ' + member.voiceChannel.name)
-    const guildNormal = guildNormals.get(member.voiceChannel.id);
+async function userLeftVoice(voiceState){
+    let member = voiceState.member;
+    const guildNormal = guildNormals.get(voiceState.channelID);
     if (guildNormal){
         if (guildNormal.userStats.get(member.user.id)){
             guildNormal.userStats.delete(member.user.id);
@@ -134,7 +134,7 @@ async function userLeftVoice(member){
 
         //check if we are last
         if (guildNormal.userStats.size == 1)
-            member.voiceChannel.leave();
+            voiceState.channel.leave();
     }
 }
 
@@ -144,7 +144,7 @@ async function userMovedVoice(oldMember, newMember){
 }
 
 async function joinChannel(message, guildNormal) {
-    const voiceChannel = message.member.voiceChannel;
+    const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) return message.channel.send('You need to be in a voice channel for me to join!');
     const permissions = voiceChannel.permissionsFor(message.client.user);
     if (!permissions.has('CONNECT') || !permissions.has('SPEAK')) {
@@ -169,31 +169,33 @@ async function joinChannel(message, guildNormal) {
         });
         //console.log(normals.users);
         guildNormals.set(voiceChannel.id, normals);
-        
-        try {
-            const connection = await voiceChannel.join().then(conn => {
-                //const dispatcher = conn.playFile(new Silence(), { type: 'opus' });
-                const dispatcher = conn.playFile('./blop.mp3');
 
-                const receiver = conn.createReceiver();
-                conn.on('speaking', (user, speaking) => {
-                    if (speaking){
-                        console.log('Speaker detected: ' + user.username);
-                        const audioStream = receiver.createPCMStream(user);
-                        audioStream.on('readable', () => {
-                            let chunk;
-                            while (null !== (chunk = audioStream.read())){
-                                let sampleTotal = 0;
-                                for (const c of chunk){
-                                    sampleTotal += c*c;
-                                }
-                                let avg = sampleTotal/chunk.length;
-                                console.log(`Average sample volume: ${avg}`);
-                            }
-                        })
-                    }
-                })
+        try {
+            const connection = await voiceChannel.join();
+            //const dispatcher = conn.playFile(new Silence(), { type: 'opus' });
+            const dispatcher = connection.play('./blop.mp3');
+            dispatcher.on('error', error => {
+                console.log(error)
             });
+            
+            connection.on('speaking', (user, speaking) => {
+                const receiver = connection.receiver;
+                if (speaking) {
+                    console.log('Speaker detected: ' + user.username);
+                    const audioStream = receiver.createStream(user, 'pcm', 'silence');
+                    audioStream.on('readable', () => {
+                        let chunk;
+                        while (null !== (chunk = audioStream.read())) {
+                            let sampleTotal = 0;
+                            for (const c of chunk) {
+                                sampleTotal += c * c;
+                            }
+                            let avg = sampleTotal / chunk.length;
+                            console.log(`Average sample volume: ${avg}`);
+                        }
+                    })
+                }
+            })
             normals.connection = connection;
             //normals.voiceReceiver = connection.createReceiver();
             //console.log(guildNormals.get(message.guild.id));
