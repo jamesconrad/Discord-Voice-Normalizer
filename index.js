@@ -32,9 +32,10 @@ normal {
 
 userStats {
     user: user,
-    audioStream,
-    percievedAverageVolume: 0,
-    percievedSamples: 0,
+    audioStream: null,
+    perceivedTotalSampleAvg: 0,
+    perceivedSamples: 0,
+    perceivedVolume: 0,
 }
 */
 
@@ -115,8 +116,8 @@ async function userJoinedVoice(voiceState){
             const newuser = {
                 user: member.user,
                 //audioStream: guildNormal.voiceReceiver.createStream(member, {}),
-                percievedAverageVolume: 0,
-                percievedSamples: 0,
+                perceivedAverageVolume: 0,
+                perceivedSamples: 0,
             }
             guildNormal.userStats.set(member.user.id, newuser);
         }
@@ -149,7 +150,8 @@ async function joinChannel(message, guildNormal) {
     if (!permissions.has('CONNECT') || !permissions.has('SPEAK')) {
         return message.channel.send('I need the permissions to join your voice channel!');
     }
-
+    
+    
     if (!guildNormal){
         const normals = {
             voiceChannel: voiceChannel,
@@ -160,8 +162,10 @@ async function joinChannel(message, guildNormal) {
         voiceChannel.members.forEach(element => {
             const userStats = {
                 user: element.user,
-                percievedAverageVolume: 0,
-                percievedSamples: 0,
+                audioStream: null,
+                perceivedTotalSampleAvg: 0,
+                perceivedSamples: 0,
+                perceivedVolume: 0,
             }
             normals.userStats.set(element.user.id, userStats);
         });
@@ -170,34 +174,18 @@ async function joinChannel(message, guildNormal) {
 
         try {
             const connection = await voiceChannel.join();
+            guildNormals.get(voiceChannel.id).connection = connection;
             //const dispatcher = conn.playFile(new Silence(), { type: 'opus' });
             const dispatcher = connection.play('./blop.mp3');
-            dispatcher.on('error', error => {
-                console.log(error)
-            });
             
             connection.on('speaking', (user, speaking) => {
-                const receiver = connection.receiver;
-                console.log(speaking);
-                if (speaking) {
-                    console.log('Speaker detected: ' + user.username);
-                    //console.log('Speaker detected: ' + user.username);
-                    //const audioStream = receiver.createStream(user, 'pcm', 'silence');//32bit signed stero 49khz
-                    //audioStream.on('readable', () => {
-                    //    let chunk;
-                    //    while (null !== (chunk = audioStream.read())) {
-                    //        //calculate energy using RMS average of squared samples
-                    //        let sampleTotal = 0;
-                    //        //iterate through stream every 32bits(8bytes)
-                    //        for (i = 0; i < chunk.length; i += 8){
-                    //            let sample = chunk.readInt32BE(i);
-                    //            sampleTotal += sample*sample;
-                    //        }
-                    //        
-                    //        let avg = sampleTotal / (chunk.length/8);
-                    //        console.log(`Average sample volume: ${avg}`);
-                    //    }
-                    //})
+                //speaking started
+                if (speaking.bitfield == 1) {
+                    BeginRecording(guildNormals.get(connection.channel.id), user);                    
+                }
+                //speaking stopped
+                if (speaking.bitfield == 0) {
+                    EndRecording(guildNormals.get(connection.channel.id), user);
                 }
             })
             normals.connection = connection;
@@ -211,4 +199,32 @@ async function joinChannel(message, guildNormal) {
     else{
         return message.channel.send("I'm already in here!");
     }
+}
+
+async function BeginRecording(guildNormal, user) {
+    console.log('Speaker detected: ' + user.username);
+    const receiver = guildNormal.connection.receiver;
+    const audioStream = receiver.createStream(user, {mode:'pcm', end:'silence'});//32bit signed stero 49khz
+    guildNormal.userStats.get(user.id).audioStream = audioStream;
+}
+
+async function EndRecording(guildNormal, user) {
+    const userStat = guildNormal.userStats.get(user.id);
+    const audioStream = userStat.audioStream;
+    let chunk;
+    while (null !== (chunk = audioStream.read())) {
+        //calculate energy using RMS average of squared samples
+        let sampleTotal = 0;
+        //iterate through stream every 32bits(4bytes)
+        //i believe chunk is null terminated
+        for (i = 0; i < chunk.length - 2; i += 2) {
+            let sample = chunk.readInt16LE(i);
+            sampleTotal += sample * sample;
+        }
+        let avg = Math.sqrt(sampleTotal / (chunk.length / 2));
+        userStat.perceivedTotalSampleAvg += avg;
+        userStat.perceivedSamples++;
+    }
+    userStat.perceivedVolume = 20*Math.log10(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples)
+    console.log(`Overall volume for ${userStat.user.username}: ${userStat.perceivedVolume} DB`);
 }
