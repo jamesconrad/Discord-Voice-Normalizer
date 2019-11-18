@@ -4,6 +4,7 @@ const Discord = require('discord.js');
 const {
     prefix,
     token,
+    botUID,
 } = require('./config.json');
 
 const { Readable } = require('stream');
@@ -58,49 +59,46 @@ client.once('disconnect', () => {
 client.on('message', async message => {
     if (message.author.bot) return;
     if (!message.content.startsWith(prefix)) return;
-
-    const guildNomral = guildNormals.get(message.guild.id);
+    
+    let guildNormal = false;
+    if (message.member.voice.channelID !== undefined)
+        guildNormal = guildNormals.get(message.member.voice.channel.id);
 
     const args = message.content.slice(prefix.length).split(/ +/);
     const command = args.shift().toLowerCase();
 
     if (command == 'help') {
-        message.channel.send(`${prefix}joinvoice : enters users voice channel and begins calculating normals.\n${prefix}normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.\n${prefix}leavevoice to have the bot exit the voice channel.`)
+        let s = `All commands can be run using the prefix (${prefix}) followed by the first letter of the command.`
+        s+= `\n${prefix}joinvoice: enters users voice channel and begins calculating normals.`;
+        s+= `\n${prefix}leavevoice: leaves the current voice channel.`;
+        s+= `\n${prefix}normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.`;
+        s+= `\n${prefix}volume: prints perceived volume of each user.`
+        message.channel.send(s)
         return;
-    }else if (command == 'joinvoice') {
+    }else if (command == 'joinvoice' || command == 'j') {
         joinChannel(message);
         return;
-    }else if (command == 'normalize') {
+    }else if (command == 'normalize' || command == 'n') {
+        if (!guildNormal) return message.send('I need to be in your voice channel.');
+        Normalize(guildNormal, message, args);
         return;
-    }else if (command == 'leavevoice') {
+    }else if (command == 'leavevoice' || command == 'l') {
+        if (!guildNormal) return message.channel.send('I must be in your voice channel to leave it!');
         guildNormals.delete(message.member.voice.channel.id);
         message.member.voice.channel.leave();
         return;
-    }else if (command == 'status') {
+    }else if (command == 'volume' || command == 'v') {
+        if (!guildNormal) return message.channel.send('I must be in your voice channel to display user volumes!');
+        let s = 'Listing perceived user volumes:\n';
         guildNormals.forEach(guild => {
-            guild.userStats.forEach(user => console.log(user.user.username));
+            guildNormal.userStats.forEach(user => {if (user.user.id != botUID) s += `${user.user.username} -> ${user.perceivedVolume}dB\n`});
         })
+        message.channel.send(s);
         return;
-    }else if (command == 'boop') {
-        guildNormals.get(message.member.user.id).connection.playFile('./blop.wav');
-        return;
-    }else if (command === 'avatar') {
-            if (!message.mentions.users.size) {
-                return message.channel.send(`Your avatar: <${message.author.displayAvatarURL}>`);
-            }
-        
-            const avatarList = message.mentions.users.map(user => {
-                return `${user.username}'s avatar: <${user.displayAvatarURL}>`;
-            });
-        
-            // send the entire array of strings as a message
-            // by default, discord.js will `.join()` the array with `\n`
-            message.channel.send(avatarList);
-    } else {
+    }else {
         message.channel.send('Invalid command, try !help.')
     }
 });
-
 
 client.on('voiceStateUpdate', async (oldMember, newMember) => {
     if (oldMember.channelID === null || oldMember.channelID === undefined) userJoinedVoice(newMember);
@@ -116,8 +114,9 @@ async function userJoinedVoice(voiceState){
             const newuser = {
                 user: member.user,
                 //audioStream: guildNormal.voiceReceiver.createStream(member, {}),
-                perceivedAverageVolume: 0,
+                perceivedTotalSampleAvg: 0,
                 perceivedSamples: 0,
+                perceivedVolume: 0,
             }
             guildNormal.userStats.set(member.user.id, newuser);
         }
@@ -152,13 +151,16 @@ async function joinChannel(message, guildNormal) {
     }
     
     
-    if (!guildNormal){
+    if (guildNormal) return message.channel.send("I'm already in here!");
+
+    try {
+        const connection = await voiceChannel.join();
         const normals = {
             voiceChannel: voiceChannel,
-            connection: null,
+            connection: connection,
             userStats: new Map(),
         };
-        
+    
         voiceChannel.members.forEach(element => {
             const userStats = {
                 user: element.user,
@@ -171,33 +173,27 @@ async function joinChannel(message, guildNormal) {
         });
         //console.log(normals.users);
         guildNormals.set(voiceChannel.id, normals);
+        guildNormals.get(voiceChannel.id).connection = connection;
+        
+        const dispatcher = connection.play(new Silence(), { type: 'opus' });
+        //const dispatcher = connection.play('./blop.mp3');
 
-        try {
-            const connection = await voiceChannel.join();
-            guildNormals.get(voiceChannel.id).connection = connection;
-            //const dispatcher = conn.playFile(new Silence(), { type: 'opus' });
-            const dispatcher = connection.play('./blop.mp3');
-            
-            connection.on('speaking', (user, speaking) => {
-                //speaking started
-                if (speaking.bitfield == 1) {
-                    BeginRecording(guildNormals.get(connection.channel.id), user);                    
-                }
-                //speaking stopped
-                if (speaking.bitfield == 0) {
-                    EndRecording(guildNormals.get(connection.channel.id), user);
-                }
-            })
-            normals.connection = connection;
-            //console.log(guildNormals.get(message.guild.id));
-        } catch (err) {
-            console.log(err);
-            guildNormals.delete(voiceChannel.id);
-            return message.channel.send(err);
-        }
-    }
-    else{
-        return message.channel.send("I'm already in here!");
+        connection.on('speaking', (user, speaking) => {
+            //speaking started
+            if (speaking.bitfield == 1) {
+                BeginRecording(guildNormals.get(connection.channel.id), user);
+            }
+            //speaking stopped
+            if (speaking.bitfield == 0) {
+                EndRecording(guildNormals.get(connection.channel.id), user);
+            }
+        })
+        normals.connection = connection;
+        //console.log(guildNormals.get(message.guild.id));
+    } catch (err) {
+        console.log(err);
+        guildNormals.delete(voiceChannel.id);
+        return message.channel.send(err);
     }
 }
 
@@ -225,6 +221,60 @@ async function EndRecording(guildNormal, user) {
         userStat.perceivedTotalSampleAvg += avg;
         userStat.perceivedSamples++;
     }
-    userStat.perceivedVolume = 20*Math.log10(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples)
-    console.log(`Overall volume for ${userStat.user.username}: ${userStat.perceivedVolume} DB`);
+    let dB = 20*Math.log10(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
+    if (dB < 20) return;
+    userStat.perceivedVolume = dB;
+    //console.log(`Overall volume for ${userStat.user.username}: ${userStat.perceivedVolume}dB`);
+}
+
+async function Normalize(guildNormal, message, args)
+{
+    let retString = ``;
+    let quietest;
+    let min = 1000;
+    let avg = 0;
+    let notEnoughSamples = [];
+    let desiredVol = 100;
+    
+    if (args.length < 1){
+        retString = `No volume specified, defaulting to 100%\n`;
+    } else {
+        desiredVol = Number(args[0])
+        if (desiredVol === NaN || desiredVol < 0 || desiredVol > 200) return message.channel.send(`${args[0]} isn't a valid volume.`);
+    }
+
+    //calcualte average volumes
+    guildNormal.userStats.forEach(userStat => {
+        if (userStat.user.bot) return;//skip bots
+        if (userStat.perceivedSamples < 1)
+            notEnoughSamples.push(userStat.user);
+        else {
+            if (userStat.perceivedVolume <= min) {
+                min = userStat.perceivedVolume;
+                quietest = userStat;
+            }
+            avg += userStat.perceivedVolume;
+        }
+    });
+    avg = avg / guildNormal.userStats.length;
+
+    //early exit if we are missing volumes
+    if (notEnoughSamples.length >= 1){
+        retString = `Some people havn't talked yet!\nWait until the following have talked atleast once:`;
+        notEnoughSamples.forEach(user => {retString += `\n     ${user.username}`});
+        return message.channel.send(retString);
+    }
+
+    //now for the actual math
+    let dVolOffset = desiredVol - 100; //offset from 100 to desired volume for quietest
+    retString += `Set the following people to the following volumes:\n`;
+    retString += `${quietest.user.username} -> ${desiredVol}%`;
+
+    guildNormal.userStats.forEach(userStat => {
+        if (userStat.user.id != quietest.user.id && !userStat.user.bot){ //skip quietest and ourself
+            let qVolMod = quietest.perceivedVolume / userStat.perceivedVolume; //modifier from our value to quietest
+            retString += `\n${userStat.user.username} -> ${100 + dVolOffset * qVolMod}%`;
+        }
+    });
+    return message.channel.send(retString);
 }
