@@ -27,7 +27,6 @@ Map guildNormals(voiceChannel.id, normal)
 normal {
     voiceChannel: voiceChannel,
     connection: null,
-    voiceReceiver,
     users: new Map(),
 }
 
@@ -155,7 +154,6 @@ async function joinChannel(message, guildNormal) {
         const normals = {
             voiceChannel: voiceChannel,
             connection: null,
-            voiceReceiver: null,
             userStats: new Map(),
         };
         
@@ -180,24 +178,29 @@ async function joinChannel(message, guildNormal) {
             
             connection.on('speaking', (user, speaking) => {
                 const receiver = connection.receiver;
+                console.log(speaking);
                 if (speaking) {
                     console.log('Speaker detected: ' + user.username);
-                    const audioStream = receiver.createStream(user, 'pcm', 'silence');
-                    audioStream.on('readable', () => {
-                        let chunk;
-                        while (null !== (chunk = audioStream.read())) {
-                            let sampleTotal = 0;
-                            for (const c of chunk) {
-                                sampleTotal += c * c;
-                            }
-                            let avg = sampleTotal / chunk.length;
-                            console.log(`Average sample volume: ${avg}`);
-                        }
-                    })
+                    //console.log('Speaker detected: ' + user.username);
+                    //const audioStream = receiver.createStream(user, 'pcm', 'silence');//32bit signed stero 49khz
+                    //audioStream.on('readable', () => {
+                    //    let chunk;
+                    //    while (null !== (chunk = audioStream.read())) {
+                    //        //calculate energy using RMS average of squared samples
+                    //        let sampleTotal = 0;
+                    //        //iterate through stream every 32bits(8bytes)
+                    //        for (i = 0; i < chunk.length; i += 8){
+                    //            let sample = chunk.readInt32BE(i);
+                    //            sampleTotal += sample*sample;
+                    //        }
+                    //        
+                    //        let avg = sampleTotal / (chunk.length/8);
+                    //        console.log(`Average sample volume: ${avg}`);
+                    //    }
+                    //})
                 }
             })
             normals.connection = connection;
-            //normals.voiceReceiver = connection.createReceiver();
             //console.log(guildNormals.get(message.guild.id));
         } catch (err) {
             console.log(err);
