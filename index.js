@@ -100,16 +100,18 @@ client.on('message', async message => {
     }
 });
 
-client.on('voiceStateUpdate', async (oldMember, newMember) => {
-    if (oldMember.channelID === null || oldMember.channelID === undefined) userJoinedVoice(newMember);
-    else if (newMember.channelID === null) userLeftVoice(oldMember);
-    else userMovedVoice(oldMember, newMember);
+client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
+    if (oldVoiceState.channelID === null || oldVoiceState.channelID === undefined) userJoinedVoice(newVoiceState);
+    else if (newVoiceState.channelID === null) userLeftVoice(oldVoiceState);
+    else userMovedVoice(oldVoiceState, newVoiceState);
 });
 
 async function userJoinedVoice(voiceState){ 
     let member = voiceState.member;
+    //check if we are tracking their channel
     const guildNormal = guildNormals.get(member.voice.channel.id);
     if (guildNormal){
+        //check if we are tracking them, and begin tracking if not
         if (!guildNormal.userStats.get(member.user.id)){
             const newuser = {
                 user: member.user,
@@ -125,13 +127,15 @@ async function userJoinedVoice(voiceState){
 
 async function userLeftVoice(voiceState){
     let member = voiceState.member;
+    //check if we are tracking their channel
     const guildNormal = guildNormals.get(voiceState.channelID);
     if (guildNormal){
+        //stop tracking the user if they are being tracked
         if (guildNormal.userStats.get(member.user.id)){
             guildNormal.userStats.delete(member.user.id);
         }
 
-        //check if we are last
+        //check if we are last, and leave
         if (guildNormal.userStats.size == 1)
             voiceState.channel.leave();
     }
@@ -143,6 +147,7 @@ async function userMovedVoice(oldMember, newMember){
 }
 
 async function joinChannel(message, guildNormal) {
+    //attempt join channel
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) return message.channel.send('You need to be in a voice channel for me to join!');
     const permissions = voiceChannel.permissionsFor(message.client.user);
@@ -171,12 +176,11 @@ async function joinChannel(message, guildNormal) {
             }
             normals.userStats.set(element.user.id, userStats);
         });
-        //console.log(normals.users);
+        
         guildNormals.set(voiceChannel.id, normals);
         guildNormals.get(voiceChannel.id).connection = connection;
         
         const dispatcher = connection.play(new Silence(), { type: 'opus' });
-        //const dispatcher = connection.play('./blop.mp3');
 
         connection.on('speaking', (user, speaking) => {
             //speaking started
@@ -189,7 +193,7 @@ async function joinChannel(message, guildNormal) {
             }
         })
         normals.connection = connection;
-        //console.log(guildNormals.get(message.guild.id));
+        
     } catch (err) {
         console.log(err);
         guildNormals.delete(voiceChannel.id);
@@ -224,7 +228,7 @@ async function EndRecording(guildNormal, user) {
     let dB = 20*Math.log10(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
     if (dB < 20) return;
     userStat.perceivedVolume = dB;
-    //userStat.perceivedVolume = userStat.perceivedTotalSampleAvg / userStat.perceivedSamples;
+    
     //console.log(`Overall volume for ${userStat.user.username}: ${userStat.perceivedVolume}dB`);
 }
 
@@ -266,7 +270,6 @@ async function Normalize(guildNormal, message, args)
         return message.channel.send(retString);
     }
 
-    //now for the actual math
     let dVolOffset = desiredVol - 100; //offset from 100 to desired volume for quietest
     retString += `Set the following people to the following volumes:\n`;
     retString += `${quietest.user.username} -> ${desiredVol}%`;
@@ -276,7 +279,7 @@ async function Normalize(guildNormal, message, args)
             //calculate decibel difference in percentage:
             let pctDifference =  Math.pow(10, (quietest.perceivedVolume - userStat.perceivedVolume)/quietest.perceivedVolume);
             //let qVolMod = quietest.perceivedVolume / userStat.perceivedVolume; //modifier from our value to quietest
-            retString += `\n${userStat.user.username} -> ${100 * pctDifference}%, pctDiff: ${pctDifference}`;
+            retString += `\n${userStat.user.username} -> ${100 * pctDifference}%`;
         }
     });
     return message.channel.send(retString);
