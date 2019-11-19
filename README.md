@@ -12,10 +12,12 @@ Due to issues with the discord api, a bot cannot receive voice packets until it 
 
 The bot only stores audio while a user is speaking, after the average volume has been calculated it deletes the data.
 
+The bot will leave a channel only when asked using !leavevoice, or when it is the last user in the voice channel.
+
 ### Commands:
 For convenience all commands can be run using the prefix followed by the first letter of the command. ex !j to join voice.
-!help: displays all commands.<br/><br/>
-!joinvoice: enters users voice channel and begins calculating normals.<br/><br/>
-!leavevoice: leaves the current voice channel.<br/><br/>
-!normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.<br/><br/>
-!volume: prints perceived average volume of each user.<br/><br/>
+!help: displays all commands.<br/>
+!joinvoice: enters users voice channel and begins calculating normals.<br/>
+!leavevoice: leaves the current voice channel.<br/>
+!normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.<br/>
+!volume: prints perceived average volume of each user.<br/>
