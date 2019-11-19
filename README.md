@@ -14,8 +14,8 @@ The bot only stores audio while a user is speaking, after the average volume has
 
 ### Commands:
 For convenience all commands can be run using the prefix followed by the first letter of the command. ex !j to join voice.
-!help: displays all commands.
-!joinvoice: enters users voice channel and begins calculating normals.
-!leavevoice: leaves the current voice channel.
-!normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.
-!volume: prints perceived average volume of each user.
+!help: displays all commands.<br/><br/>
+!joinvoice: enters users voice channel and begins calculating normals.<br/><br/>
+!leavevoice: leaves the current voice channel.<br/><br/>
+!normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.<br/><br/>
+!volume: prints perceived average volume of each user.<br/><br/>
