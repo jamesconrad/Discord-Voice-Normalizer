@@ -211,19 +211,20 @@ async function EndRecording(guildNormal, user) {
     while (null !== (chunk = audioStream.read())) {
         //calculate energy using RMS average of squared samples
         let sampleTotal = 0;
-        //iterate through stream every 32bits(4bytes)
-        //i believe chunk is null terminated
+        //iterate through stream every 16bits(2bytes)
         for (i = 0; i < chunk.length - 2; i += 2) {
             let sample = chunk.readInt16LE(i);
             sampleTotal += sample * sample;
         }
         let avg = Math.sqrt(sampleTotal / (chunk.length / 2));
+        if (20*Math.log10(avg) < 20) continue;
         userStat.perceivedTotalSampleAvg += avg;
         userStat.perceivedSamples++;
     }
     let dB = 20*Math.log10(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
     if (dB < 20) return;
     userStat.perceivedVolume = dB;
+    //userStat.perceivedVolume = userStat.perceivedTotalSampleAvg / userStat.perceivedSamples;
     //console.log(`Overall volume for ${userStat.user.username}: ${userStat.perceivedVolume}dB`);
 }
 
@@ -272,8 +273,10 @@ async function Normalize(guildNormal, message, args)
 
     guildNormal.userStats.forEach(userStat => {
         if (userStat.user.id != quietest.user.id && !userStat.user.bot){ //skip quietest and ourself
-            let qVolMod = quietest.perceivedVolume / userStat.perceivedVolume; //modifier from our value to quietest
-            retString += `\n${userStat.user.username} -> ${100 + dVolOffset * qVolMod}%`;
+            //calculate decibel difference in percentage:
+            let pctDifference =  Math.pow(10, (quietest.perceivedVolume - userStat.perceivedVolume)/quietest.perceivedVolume);
+            //let qVolMod = quietest.perceivedVolume / userStat.perceivedVolume; //modifier from our value to quietest
+            retString += `\n${userStat.user.username} -> ${100 * pctDifference}%, pctDiff: ${pctDifference}`;
         }
     });
     return message.channel.send(retString);
