@@ -5,6 +5,7 @@ const {
     prefix,
     token,
     botUID,
+    minSampleVoldB,
 } = require('./config.json');
 
 const { Readable } = require('stream');
@@ -47,7 +48,7 @@ const client = new Discord.Client();
 client.login(token);
 
 client.once('ready', () => {
-    console.log('Ready!');
+    console.log(`Ready! Connected to ${client.guilds.size} server(s)`);
 });
 client.once('reconnecting', () => {
     console.log('Reconnecting!');
@@ -203,32 +204,33 @@ async function joinChannel(message, guildNormal) {
 
 async function BeginRecording(guildNormal, user) {
     console.log('Speaker detected: ' + user.username);
+    const userStat = guildNormal.userStats.get(user.id);
     const receiver = guildNormal.connection.receiver;
     const audioStream = receiver.createStream(user, {mode:'pcm', end:'silence'});//32bit signed stero 49khz
+    //calculate average volumes as data comes in
+    audioStream.on('readable', () => {
+        let chunk;
+        while (null !== (chunk = audioStream.read())) {
+            //calculate energy using RMS average of squared samples
+            let sampleTotal = 0;
+            //iterate through stream every 16bits(2bytes)
+            for (i = 0; i < chunk.length - 2; i += 2) {
+                let sample = chunk.readInt16LE(i);
+                sampleTotal += sample * sample;
+            }
+            let avg = Math.sqrt(sampleTotal / (chunk.length / 2));
+            if (20 * Math.log10(avg) < minSampleVoldB) continue;
+            userStat.perceivedTotalSampleAvg += avg;
+            userStat.perceivedSamples++;
+        }
+    });
     guildNormal.userStats.get(user.id).audioStream = audioStream;
 }
 
 async function EndRecording(guildNormal, user) {
     const userStat = guildNormal.userStats.get(user.id);
-    const audioStream = userStat.audioStream;
-    let chunk;
-    while (null !== (chunk = audioStream.read())) {
-        //calculate energy using RMS average of squared samples
-        let sampleTotal = 0;
-        //iterate through stream every 16bits(2bytes)
-        for (i = 0; i < chunk.length - 2; i += 2) {
-            let sample = chunk.readInt16LE(i);
-            sampleTotal += sample * sample;
-        }
-        let avg = Math.sqrt(sampleTotal / (chunk.length / 2));
-        if (20*Math.log10(avg) < 20) continue;
-        userStat.perceivedTotalSampleAvg += avg;
-        userStat.perceivedSamples++;
-    }
     let dB = 20*Math.log10(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
-    if (dB < 20) return;
     userStat.perceivedVolume = dB;
-    
     //console.log(`Overall volume for ${userStat.user.username}: ${userStat.perceivedVolume}dB`);
 }
 
