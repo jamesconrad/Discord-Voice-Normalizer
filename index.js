@@ -278,8 +278,7 @@ async function Normalize(guildNormal, message, args)
         if (userStat.user.id != quietest.user.id && !userStat.user.bot){ //skip quietest and ourself
             //calculate decibel difference in percentage:
             let pctDifference =  Math.pow(10, (quietest.perceivedVolume - userStat.perceivedVolume)/quietest.perceivedVolume);
-            //let qVolMod = quietest.perceivedVolume / userStat.perceivedVolume; //modifier from our value to quietest
-            retString += `\n${userStat.user.username} -> ${100 * pctDifference}%`;
+            retString += `\n${userStat.user.username} -> ${desiredVol - (100 - 100 * pctDifference)}%`;
         }
     });
     return message.channel.send(retString);
