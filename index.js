@@ -100,7 +100,7 @@ client.on('message', async message => {
 });
 
 client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
-    //determine wether user joined, left, or moved voice channels
+    //determine whether user joined, left, or moved voice channels
     if (oldVoiceState.channelID === null || oldVoiceState.channelID === undefined) userJoinedVoice(newVoiceState);
     else if (newVoiceState.channelID === null) userLeftVoice(oldVoiceState);
     else userMovedVoice(oldVoiceState, newVoiceState);
@@ -268,7 +268,7 @@ async function EndRecording(guildNormal, user) {
  * Calculates and sends the volumes required to set the quietest speaker to the desired volume
  * @param {GuildNormal} guildNormal - The guildNormal the person who invoked the command is a part of.
  * @param {Message} message - The message that invoked the command.
- * @param {Array} args - Arguments from the execution command. Only first argument is used currently.
+ * @param {string[]} args - Arguments from the execution command. Only first argument is used currently.
  */
 async function Normalize(guildNormal, message, args)
 {
