@@ -57,7 +57,7 @@ client.on('message', async message => {
     if (!message.content.startsWith(prefix)) return;
     
     //check for user to be in GuildNormals
-    const guildNormal = false;
+    let guildNormal = false;
     if (message.member.voice.channelID !== undefined){
         guildNormal = guildNormals.get(message.member.voice.channel.id);
     }
@@ -70,7 +70,7 @@ client.on('message', async message => {
         let s = `All commands can be run using the prefix (${prefix}) followed by the first letter of the command.`
         s+= `\n${prefix}joinvoice: enters users voice channel and begins calculating normals.`;
         s+= `\n${prefix}leavevoice: leaves the current voice channel.`;
-        s+= `\n${prefix}normalize [number]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user.`;
+        s+= `\n${prefix}normalize [number] [-ignore]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user. If -ignore is present will exclude caller from normal calculations.`;
         s+= `\n${prefix}volume: prints perceived volume of each user.`
         message.channel.send(s)
         return;
@@ -279,18 +279,21 @@ async function Normalize(guildNormal, message, args)
     let avg = 0;
     let notEnoughSamples = [];
     let desiredVol = 100;
+    let skipSender = false;
     
-    //sanatize input
+    //sanitize input
     if (args.length < 1){
         retString = `No volume specified, defaulting to 100%\n`;
     } else {
         desiredVol = Number(args[0])
         if (desiredVol === NaN || desiredVol < 0 || desiredVol > 200) return message.channel.send(`${args[0]} isn't a valid volume.`);
+        if (args.length >= 2 && (args[1] == '-i' || args[1] == '-ignore')) skipSender = true;
     }
 
     //calcualte average volumes
     guildNormal.userStats.forEach(userStat => {
         if (userStat.user.bot) return;//skip bots
+        if (skipSender && userStat.user.id == message.member.id) return; //skip sender if flag exists
         //ensure everyone has spoken, prep return array to inform those who havn't
         if (userStat.perceivedSamples < 1)
             notEnoughSamples.push(userStat.user);
@@ -315,13 +318,19 @@ async function Normalize(guildNormal, message, args)
     retString += `Set the following people to the following volumes:\n`;
     retString += `${quietest.user.username} -> ${desiredVol}%`;
 
+    //calculate and scale quietest to desired volume
+    let qAvg = quietest.perceivedTotalSampleAvg / quietest.perceivedSamples;
+
     guildNormal.userStats.forEach(userStat => {
-        if (userStat.user.id != quietest.user.id && !userStat.user.bot){ //skip quietest and ourself
-            //calculate decibel difference in percentage:
-            let pctDifference =  Math.pow(10, (quietest.perceivedVolume - userStat.perceivedVolume)/quietest.perceivedVolume);
-            //add this users new volume to output
-            retString += `\n${userStat.user.username} -> ${desiredVol - (100 - 100 * pctDifference)}%`;
-        }
+        if (userStat.user.id == quietest.user.id || userStat.user.bot) return; //skip quietest and ourself
+        if (skipSender && userStat.user.id == message.member.id) return; //skip sender if flag exists
+            //calculate average and difference to quietest
+            let userAvg = userStat.perceivedTotalSampleAvg / userStat.perceivedSamples;
+            let diffAvg = userAvg - qAvg;
+            //calculate percentage of current volume after removing difference to queitest
+            let volumeScalar = (userAvg - diffAvg) / userAvg * desiredVol;
+            //add user's new volume to output
+            retString += `\n${userStat.user.username} -> ${volumeScalar.toFixed(2)}%`;
     });
     return message.channel.send(retString);
 }
