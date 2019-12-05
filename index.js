@@ -78,7 +78,7 @@ client.on('message', async message => {
         joinChannel(message);
         return;
     } else if (command == 'normalize' || command == 'n') {
-        if (!guildNormal) return message.send('I need to be in your voice channel.');
+        if (!guildNormal) return message.channel.send('I need to be in your voice channel.');
         Normalize(guildNormal, message, args);
         return;
     } else if (command == 'leavevoice' || command == 'l') {
@@ -260,7 +260,7 @@ async function BeginRecording(guildNormal, user) {
  */
 async function EndRecording(guildNormal, user) {
     const userStat = guildNormal.userStats.get(user.id);
-    let dB = 20 * Math.log10(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
+    let dB = ToDecibels(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
     userStat.perceivedVolume = dB;
     //console.log(`Overall volume for ${userStat.user.username}: ${userStat.perceivedVolume}dB`);
 }
@@ -274,37 +274,64 @@ async function EndRecording(guildNormal, user) {
 async function Normalize(guildNormal, message, args) {
     let retString = ``;
     let quietest;
-    let min = 1000;
+    let min = 9007199254740992;//max size of int
     let avg = 0;
+    let totalSampleVol = 0;
     let notEnoughSamples = [];
-    let desiredVol = 100;
-    let skipSender = false;
+    let desiredVol = -1;
+    let argFlags = { ignoreSender: false, useAverageVol: false };
+    let ignoredUsers = [];
 
-    //sanitize input
-    if (args.length < 1) {
-        retString = `No volume specified, defaulting to 100%\n`;
-    } else {
-        desiredVol = Number(args[0])
-        if (desiredVol === NaN || desiredVol < 0 || desiredVol > 200) return message.channel.send(`${args[0]} isn't a valid volume.`);
-        if (args.length >= 2 && (args[1] == '-i' || args[1] == '-ignore')) skipSender = true;
+    //parse args
+    if (args.length > 0 && (args[0] == '-h' || args[0] == '-help')){
+        retString = "Valid arguments are:";
+        retString += "\n[number] : any number within 0 - 200 (inclusive)";
+        retString += "\n-a or -average : center each user around voice chat average volume";
+        retString += "\n-i or -ignore : remove yourself from calculations";
+        retString += `\nExample: ${prefix}n 50 -a : determines user volumes in relation to half room average`;
+        return message.channel.send(retString)        
+    }
+    args.forEach(a => {
+        let n = Number(a);
+        if (n !== NaN && (n > 0 && n <= 200)) desiredVol = n;
+
+        if (a == '-i' || a == '-ignore') {
+            argFlags.ignoreSender = true;
+            ignoredUsers.push(message.member.id)
+        }
+        else if (a == '-a' || a == '-average') {
+            argFlags.useAverageVol = true;
+        }
+    });
+    if (desiredVol < 0 || desiredVol > 200) {
+        retString += `No valid volume passed, defaulting to 100%\n`;
+        desiredVol = 100;
     }
 
-    //calcualte average volumes
+    //filter out all users that are bots, or removed via args
+    let filteredUserStats = []
     guildNormal.userStats.forEach(userStat => {
-        if (userStat.user.bot) return;//skip bots
-        if (skipSender && userStat.user.id == message.member.id) return; //skip sender if flag exists
+        if (ignoredUsers.includes(userStat.user.id)) return;
+        else if (userStat.user.bot) return;
+        filteredUserStats.push(userStat)
+    });
+    if (!(filteredUserStats.length > 0)) return message.channel.send("Error: All users in chat are being filtered out. Try removing some filters you have set.")
+
+    //calcualte average volumes
+    filteredUserStats.forEach(userStat => {
         //ensure everyone has spoken, prep return array to inform those who havn't
         if (userStat.perceivedSamples < 1)
             notEnoughSamples.push(userStat.user);
         else {
-            if (userStat.perceivedVolume <= min) {
-                min = userStat.perceivedVolume;
+            let userAvg = userStat.perceivedTotalSampleAvg / userStat.perceivedSamples;
+            if (userAvg <= min) {
+                min = userAvg;
                 quietest = userStat;
             }
-            avg += userStat.perceivedVolume;
+            totalSampleVol += userAvg;
         }
     });
-    avg = avg / guildNormal.userStats.length;
+    avg = totalSampleVol / filteredUserStats.length;
 
     //early exit if we are missing volumes
     if (notEnoughSamples.length >= 1) {
@@ -314,22 +341,22 @@ async function Normalize(guildNormal, message, args) {
     }
 
     //setup outputs
-    retString += `Set the following people to the following volumes:\n`;
-    retString += `${quietest.user.username} -> ${desiredVol}%`;
+    retString += `Set the following people to the following volumes:`;
 
     //calculate and scale quietest to desired volume
-    let qAvg = quietest.perceivedTotalSampleAvg / quietest.perceivedSamples;
-
-    guildNormal.userStats.forEach(userStat => {
-        if (userStat.user.id == quietest.user.id || userStat.user.bot) return; //skip quietest and ourself
-        if (skipSender && userStat.user.id == message.member.id) return; //skip sender if flag exists
+    let qAvg = argFlags.useAverageVol ? avg : quietest.perceivedTotalSampleAvg / quietest.perceivedSamples;
+    desiredVol /= 100;
+    filteredUserStats.forEach(userStat => {
         //calculate average and difference to quietest
         let userAvg = userStat.perceivedTotalSampleAvg / userStat.perceivedSamples;
-        let diffAvg = userAvg - qAvg;
         //calculate percentage of current volume after removing difference to queitest
-        let volumeScalar = (userAvg - diffAvg) / userAvg * desiredVol;
+        let volumeScalar = qAvg / userAvg * desiredVol;
         //add user's new volume to output
-        retString += `\n${userStat.user.username} -> ${volumeScalar.toFixed(2)}%`;
+        retString += `\n${userStat.user.username} -> ${(volumeScalar*100).toFixed(2)}% (${ToDecibels(userAvg).toFixed(2)}dB -> ${ToDecibels(userAvg * volumeScalar).toFixed(2)}dB)`;
     });
     return message.channel.send(retString);
+}
+
+function ToDecibels(num){
+    return 20 * Math.log10(num)
 }
