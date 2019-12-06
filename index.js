@@ -345,18 +345,24 @@ async function Normalize(guildNormal, message, args) {
 
     //calculate and scale quietest to desired volume
     let qAvg = argFlags.useAverageVol ? avg : quietest.perceivedTotalSampleAvg / quietest.perceivedSamples;
-    desiredVol /= 100;
+    let targetdB = ToDecibels(qAvg);
+    
     filteredUserStats.forEach(userStat => {
-        //calculate average and difference to quietest
-        let userAvg = userStat.perceivedTotalSampleAvg / userStat.perceivedSamples;
-        //calculate percentage of current volume after removing difference to queitest
-        let volumeScalar = qAvg / userAvg * desiredVol;
+        //calculate target db levels
+        let userdB = ToDecibels(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
+        let deltadB = targetdB - userdB;
+        //calculate ratio of difference in percieved db change
+        let loudnessRatio = (Math.pow(10,0.301029995664*(deltadB)/10)*1000000)/1000000
         //add user's new volume to output
-        retString += `\n${userStat.user.username} -> ${(volumeScalar*100).toFixed(2)}% (${ToDecibels(userAvg).toFixed(2)}dB -> ${ToDecibels(userAvg * volumeScalar).toFixed(2)}dB)`;
+        retString += `\n${userStat.user.username} -> ${(loudnessRatio*100).toFixed(2)}% (△${deltadB.toFixed(2)}dB)`;
     });
     return message.channel.send(retString);
 }
 
+/**
+ * Converts from average linear volumes to dB (logarithmic)
+ * @param {Int} num - Sum of volume samples squared.
+ */
 function ToDecibels(num){
     return 20 * Math.log10(num)
 }
