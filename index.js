@@ -347,6 +347,9 @@ async function Normalize(guildNormal, message, args) {
     let qAvg = argFlags.useAverageVol ? avg : quietest.perceivedTotalSampleAvg / quietest.perceivedSamples;
     let targetdB = ToDecibels(qAvg);
     
+    //convert desired volume scalar into a db value, and offset our target by it
+    targetdB += (33.21928095*(Math.log((desiredVol/100)))/Math.log(10)*1000000)/1000000;
+
     filteredUserStats.forEach(userStat => {
         //calculate target db levels
         let userdB = ToDecibels(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
