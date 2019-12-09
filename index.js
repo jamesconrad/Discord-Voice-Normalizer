@@ -70,7 +70,7 @@ client.on('message', async message => {
         let s = `All commands can be run using the prefix (${prefix}) followed by the first letter of the command.`
         s += `\n${prefix}joinvoice: enters users voice channel and begins calculating normals.`;
         s += `\n${prefix}leavevoice: leaves the current voice channel.`;
-        s += `\n${prefix}normalize [number] [-ignore]: prints normalized volumes for each user in the channel, number is the volume desired for the quietest user. If -ignore is present will exclude caller from normal calculations.`;
+        s += `\n${prefix}normalize: normalizes user voice volumes in a voice channel. Use -help as an argument for more information.`;
         s += `\n${prefix}volume: prints perceived volume of each user.`
         message.channel.send(s)
         return;
@@ -78,19 +78,19 @@ client.on('message', async message => {
         joinChannel(message);
         return;
     } else if (command == 'normalize' || command == 'n') {
-        if (!guildNormal) return message.channel.send('I need to be in your voice channel.');
+        if (!guildNormal) return message.channel.send('I need to be in your voice channel to calculate norrmals!');
         Normalize(guildNormal, message, args);
         return;
     } else if (command == 'leavevoice' || command == 'l') {
-        if (!guildNormal) return message.channel.send('I must be in your voice channel to leave it!');
+        if (!guildNormal) return message.channel.send('I need to be in your voice channel to leave it!');
         guildNormals.delete(message.member.voice.channel.id);
         message.member.voice.channel.leave();
         return;
     } else if (command == 'volume' || command == 'v') {
-        if (!guildNormal) return message.channel.send('I must be in your voice channel to display user volumes!');
+        if (!guildNormal) return message.channel.send('I need to be in your voice channel to display user volumes!');
         let s = 'Listing perceived user volumes:\n';
         guildNormals.forEach(guild => {
-            guildNormal.userStats.forEach(user => { if (user.user.id != botUID) s += `${user.user.username} -> ${user.perceivedVolume}dB\n` });
+            guildNormal.userStats.forEach(user => { if (user.user.id != botUID) s += `${user.user.username} -> ${user.perceivedVolume.ToFixed(2)}dB\n` });
         })
         message.channel.send(s);
         return;
@@ -245,7 +245,7 @@ async function BeginRecording(guildNormal, user) {
                 sampleTotal += sample * sample;
             }
             let avg = Math.sqrt(sampleTotal / (chunk.length / 2));
-            if (20 * Math.log10(avg) < minSampleVoldB) continue;
+            if (ToDecibels(avg) < minSampleVoldB) continue;
             userStat.perceivedTotalSampleAvg += avg;
             userStat.perceivedSamples++;
         }
@@ -266,7 +266,7 @@ async function EndRecording(guildNormal, user) {
 }
 
 /**
- * Calculates and sends the volumes required to set the quietest speaker to the desired volume
+ * Calculates and sends the volumes required to normalize speaker volumes based on arguments
  * @param {GuildNormal} guildNormal - The guildNormal the person who invoked the command is a part of.
  * @param {Message} message - The message that invoked the command.
  * @param {string[]} args - Arguments from the execution command. Only first argument is used currently.
@@ -335,7 +335,7 @@ async function Normalize(guildNormal, message, args) {
 
     //early exit if we are missing volumes
     if (notEnoughSamples.length >= 1) {
-        retString = `Some people havn't talked yet!\nWait until the following have talked atleast once:`;
+        retString = `Some people havn't talked yet!\nWait until the following have talked at least once:`;
         notEnoughSamples.forEach(user => { retString += `\n     ${user.username}` });
         return message.channel.send(retString);
     }
@@ -348,14 +348,14 @@ async function Normalize(guildNormal, message, args) {
     let targetdB = ToDecibels(qAvg);
     
     //convert desired volume scalar into a db value, and offset our target by it
-    targetdB += (33.21928095*(Math.log((desiredVol/100)))/Math.log(10)*1000000)/1000000;
+    targetdB += 33.21928095*(Math.log((desiredVol/100)))/Math.log(10);
 
     filteredUserStats.forEach(userStat => {
         //calculate target db levels
         let userdB = ToDecibels(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
         let deltadB = targetdB - userdB;
         //calculate ratio of difference in percieved db change
-        let loudnessRatio = (Math.pow(10,0.301029995664*(deltadB)/10)*1000000)/1000000
+        let loudnessRatio = Math.pow(10,0.301029995664*(deltadB)/10);
         //add user's new volume to output
         retString += `\n${userStat.user.username} -> ${(loudnessRatio*100).toFixed(2)}% (△${deltadB.toFixed(2)}dB)`;
     });
