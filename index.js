@@ -6,8 +6,45 @@ const {
     token,
     botUID,
     minSampleVoldB,
+    triviaTimeout,
 } = require('./config.json');
+const https = require('https');
 
+//trivia setup:
+console.log('Performing pre-discord module setups...');
+let trivia = {
+    apiToken: 0,//session token
+    categories: [],
+};
+https.get('https://opentdb.com/api_category.php', (resp) => {
+    let data = '';
+    resp.on('data', (chunk) => {
+        data += chunk;
+    });
+    resp.on('end', () => {
+        trivia.categories = trivia.categories.concat(JSON.parse(data).trivia_categories);
+    });
+}).on("error", (err) => {
+    console.log("Trivia HTTP Error: " + err.message);
+});
+
+let triviaToken = '';
+https.get('https://opentdb.com/api_token.php?command=request', (resp) => {
+    let data = '';
+    resp.on('data', (chunk) => {
+        data += chunk;
+    });
+    resp.on('end', () => {
+        triviaToken = JSON.parse(data).token;
+        console.log(`Trivia token retrieved: ${triviaToken}`);
+    });
+}).on("error", (err) => {
+    console.log("Trivia HTTP Error: " + err.message);
+});
+console.log('Trivia module setup complete.');
+//
+
+console.log('Attempting Discord connection...');
 //setup endless silence audio stream
 const { Readable } = require('stream');
 const SILENCE_FRAME = Buffer.from([0xF8, 0xFF, 0xFE]);
@@ -40,7 +77,7 @@ const guildNormals = new Map();
 const client = new Discord.Client();
 
 client.login(token);
-
+//client.on('debug', s => console.log(s));
 client.once('ready', () => {
     console.log(`Ready! Connected to ${client.guilds.size} server(s)`);
 });
@@ -72,6 +109,7 @@ client.on('message', async message => {
         s += `\n${prefix}leavevoice: leaves the current voice channel.`;
         s += `\n${prefix}normalize: normalizes user voice volumes in a voice channel. Use -help as an argument for more information.`;
         s += `\n${prefix}volume: prints perceived volume of each user.`
+        s += `\n${prefix}trivia.`
         message.channel.send(s)
         return;
     } else if (command == 'joinvoice' || command == 'j') {
@@ -94,6 +132,10 @@ client.on('message', async message => {
         })
         message.channel.send(s);
         return;
+    } else if (command == 'trivia') {
+        Trivia(message, args)
+    } else if (command == 'ee') {
+        EscapeEmote(message, args)
     } else {
         message.channel.send('Invalid command, try !help.')
     }
@@ -283,13 +325,13 @@ async function Normalize(guildNormal, message, args) {
     let ignoredUsers = [];
 
     //parse args
-    if (args.length > 0 && (args[0] == '-h' || args[0] == '-help')){
+    if (args.length > 0 && (args[0] == '-h' || args[0] == '-help')) {
         retString = "Valid arguments are:";
         retString += "\n[number] : any number within 0 - 200 (inclusive)";
         retString += "\n-a or -average : center each user around voice chat average volume";
         retString += "\n-i or -ignore : remove yourself from calculations";
         retString += `\nExample: ${prefix}n 50 -a : determines user volumes in relation to half room average`;
-        return message.channel.send(retString)        
+        return message.channel.send(retString)
     }
     args.forEach(a => {
         let n = Number(a);
@@ -346,18 +388,18 @@ async function Normalize(guildNormal, message, args) {
     //calculate and scale quietest to desired volume
     let qAvg = argFlags.useAverageVol ? avg : quietest.perceivedTotalSampleAvg / quietest.perceivedSamples;
     let targetdB = ToDecibels(qAvg);
-    
+
     //convert desired volume scalar into a db value, and offset our target by it
-    targetdB += 33.21928095*(Math.log((desiredVol/100)))/Math.log(10);
+    targetdB += 33.21928095 * (Math.log((desiredVol / 100))) / Math.log(10);
 
     filteredUserStats.forEach(userStat => {
         //calculate target db levels
         let userdB = ToDecibels(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
         let deltadB = targetdB - userdB;
         //calculate ratio of difference in percieved db change
-        let loudnessRatio = Math.pow(10,0.301029995664*(deltadB)/10);
+        let loudnessRatio = Math.pow(10, 0.301029995664 * (deltadB) / 10);
         //add user's new volume to output
-        retString += `\n${userStat.user.username} -> ${(loudnessRatio*100).toFixed(2)}% (△${deltadB.toFixed(2)}dB)`;
+        retString += `\n${userStat.user.username} -> ${(loudnessRatio * 100).toFixed(2)}% (△${deltadB.toFixed(2)}dB)`;
     });
     return message.channel.send(retString);
 }
@@ -366,6 +408,162 @@ async function Normalize(guildNormal, message, args) {
  * Converts from average linear volumes to dB (logarithmic)
  * @param {Int} num - Sum of volume samples squared.
  */
-function ToDecibels(num){
+function ToDecibels(num) {
     return 20 * Math.log10(num)
+}
+
+async function EscapeEmote(message, args) {
+    return message.channel.send(`\\${args[0]}`);
+}
+
+const triviaScores = new Map();
+
+async function Trivia(message, args) {
+    let apicall = `https://opentdb.com/api.php?amount=1&token=${triviaToken}`;
+
+    for (i = 0; i < args.length; i++) {
+        if (args[i] == '-categories') {
+            let retString = 'Possible categories are:';
+            trivia.categories.forEach(c => (retString += `\n${c.name}, ID: ${c.id}`));
+            return message.channel.send(retString);
+        } else if (args[i] == '-c') {
+            if (i >= args.length - 1) return message.channel.send('You need to specifiy a category id after the -c argument, list the categories and their ids with -categories');
+            let id = Number(args[i + 1]);
+            if (id === NaN) return message.channel.send(`${id} is not a number, and therefore an invalid category`);
+            let validId = false;
+            for (j = 0; j < trivia.categories.length; j++) {
+                if (trivia.categories[j].id == id) {
+                    validId = true;
+                    break;
+                }
+            }
+            if (!validId) return message.channel.send(`${id} is not a valid category id number, double check categories with -categories`);
+            apicall += `&category=${id}`;
+        } else if (args[i] == '-score') {
+            let retString = '\`\`\`Listing all user scores:';
+            triviaScores.forEach(entry => { retString += `\n${entry.username}: ${entry.score}`});
+            retString += '\`\`\`';
+            return message.channel.send(retString);
+        } else if (args[i] == '-reset') {
+            RefreshTriviaToken();
+        } else if (args[i] == '-h' || args[i] == '-help') {
+            return message.channel.send('I was lazy, heres the quick form:\n-categories : lists categories\n-c [id] : runs a question from the category id\n-score : lists scores\n-reset : resets repeat question prevention');
+        }
+    }
+
+    https.get(apicall, (resp) => {
+        let data = '';
+        resp.on('data', (chunk) => {
+            data += chunk;
+        });
+        resp.on('end', () => {
+            let question = JSON.parse(data);
+            if (question.response_code == 2) message.channel.send(`Trivia API Error: ${apicall} returned invalid parameter`)
+            else if (question.response_code == 3 || question.response_code == 4) return RefreshTriviaToken();
+            question = question.results[0];
+            question.question = question.question.replace(/&quot;/g, '\"').replace(/&#039;/g, '\'').replace(/&eacute;/g, 'é');
+            let questionReward = TriviaDifficultyToScore(question.difficulty);
+            //Multiple Choice
+            if (question.type == 'multiple') {
+                let answerIdx = 0;
+                let answers = [];
+                let answerEmotes = [`🇦`, `🇧`, `🇨`, `🇩`]
+                answers = question.incorrect_answers.sort(() => Math.random() - 0.5);
+                answerIdx = Math.floor(Math.random() * answers.length);
+                answers.splice(answerIdx, 0, question.correct_answer);
+                let formattedResponse = `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
+                for (i = 0; i < answers.length; i++)
+                    formattedResponse += `\n${answerEmotes[i]} - ${answers[i]}`
+
+                message.channel.send(formattedResponse).then(m => {
+                    m.react(`🇦`);
+                    m.react(`🇧`);
+                    m.react(`🇨`);
+                    m.react(`🇩`);
+
+                    const filter = (reaction, user) => reaction.emoji.name == answerEmotes[answerIdx] && !user.bot;
+                    m.awaitReactions(filter, { time: triviaTimeout }).then(collected => {
+                        let correct_users = '';
+                        collected.forEach(c => {
+                            c.users.forEach(user => {
+                                if (!user.bot) {
+                                    correct_users += ` ${user.username},`;
+                                    ModTriviaScore(user, questionReward);
+                                }
+                            })
+                        });
+                        correct_users = correct_users.slice(0, -1);
+                        let retString = `Awnser: ${answerEmotes[answerIdx]}`;
+                        return m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
+                    });
+                });
+            }
+
+            //True or False
+            else {
+                let formattedResponse = `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
+                let correct_answer = question.correct_answer === 'True' ? '✅' : '❎';
+
+                message.channel.send(formattedResponse).then(m => {
+                    m.react(`✅`);
+                    m.react(`❎`);
+
+                    const filter = (reaction, user) => reaction.emoji.name === correct_answer && !user.bot;
+                    m.awaitReactions(filter, { time: triviaTimeout }).then(collected => {
+                        let correct_users = '';
+                        collected.forEach(c => {
+                            c.users.forEach(user => {
+                                if (!user.bot) {
+                                    correct_users += ` ${user.username},`;
+                                    ModTriviaScore(user, questionReward);
+                                }
+                            })
+                        });
+                        correct_users = correct_users.slice(0, -1);
+                        let retString = `Awnser: ${correct_answer}`;
+                        return m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
+                    });
+                });
+            }
+        });
+    }).on("error", (err) => {
+        return message.channel.send("Trivia API Error: " + err.message);
+    });
+    //check, x
+}
+
+function ModTriviaScore(user, value) {
+    let entry = triviaScores.get(user.id);
+    if (entry === undefined) {
+        entry = {
+            username: user.username,
+            score: value
+        };
+        triviaScores.set(user.id, entry);
+    }
+    else {
+        entry.score += value;
+    }
+}
+
+function TriviaDifficultyToScore(difficulty) {
+    if (difficulty === 'easy') return 1;
+    else if (difficulty === 'medium') return 3;
+    else if (difficulty === 'hard') return 5;
+    else return 0;
+}
+
+function RefreshTriviaToken() {
+    https.get(`https://opentdb.com/api_token.php?command=reset&token=${triviaToken}`, (resp) => {
+        let data = '';
+        resp.on('data', (chunk) => {
+            data += chunk;
+        });
+        resp.on('end', () => {
+            triviaToken = JSON.parse(data).token;
+            console.log(`Trivia token reset: ${triviaToken}`);
+        });
+    }).on("error", (err) => {
+        console.log("Trivia HTTP Error: " + err.message);
+    });
 }
