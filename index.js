@@ -455,7 +455,10 @@ async function Trivia(message, args) {
                     });
                 });
                 setTimeout(() => {
-                    table = table.sort((a,b) => (a.s < b.s));
+                    console.log(table);
+                    table = table.sort((a,b) => (b.s - a.s));
+                    console.log('->');
+                    console.log(table);
                     table.forEach(e => retString += `\n${e.n}: ${e.s}`);
                     return message.channel.send(retString + '\`\`\`');
                 }, 500);
