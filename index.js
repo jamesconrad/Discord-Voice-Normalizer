@@ -9,6 +9,7 @@ const {
     triviaTimeout,
 } = require('./config.json');
 const https = require('https');
+const sqlite = require('sqlite3');
 
 //trivia setup:
 console.log('Performing pre-discord module setups...');
@@ -27,20 +28,12 @@ https.get('https://opentdb.com/api_category.php', (resp) => {
 }).on("error", (err) => {
     console.log("Trivia HTTP Error: " + err.message);
 });
-
+let triviadb = new sqlite.Database('./db/trivia.db', sqlite.OPEN_READWRITE, (err) => {
+    if (err) console.log(err.message);
+    else console.log('Trivia DB Connected');
+})
 let triviaToken = '';
-https.get('https://opentdb.com/api_token.php?command=request', (resp) => {
-    let data = '';
-    resp.on('data', (chunk) => {
-        data += chunk;
-    });
-    resp.on('end', () => {
-        triviaToken = JSON.parse(data).token;
-        console.log(`Trivia token retrieved: ${triviaToken}`);
-    });
-}).on("error", (err) => {
-    console.log("Trivia HTTP Error: " + err.message);
-});
+GenerateNewTriviaToken();
 console.log('Trivia module setup complete.');
 //
 
@@ -80,12 +73,21 @@ client.login(token);
 //client.on('debug', s => console.log(s));
 client.once('ready', () => {
     console.log(`Ready! Connected to ${client.guilds.size} server(s)`);
+    client.guilds.forEach(g => TriviaDBUpdateGuild(g));
 });
 client.once('reconnecting', () => {
     console.log('Reconnecting!');
 });
 client.once('disconnect', () => {
     console.log('Disconnect!');
+});
+client.on('guildCreate', guild => {
+    console.log(`Added to Guild: ${guild.name}`);
+    TriviaDBCreateGuild(guild)
+});
+client.on('guildDelete', guild => {
+    console.log(`Removed from Guild: ${guild.name}`);
+    TriviaDBRemoveGuild(guild);
 });
 
 client.on('message', async message => {
@@ -440,10 +442,25 @@ async function Trivia(message, args) {
             if (!validId) return message.channel.send(`${id} is not a valid category id number, double check categories with -categories`);
             apicall += `&category=${id}`;
         } else if (args[i] == '-score') {
-            let retString = '\`\`\`Listing all user scores:';
-            triviaScores.forEach(entry => { retString += `\n${entry.username}: ${entry.score}`});
-            retString += '\`\`\`';
-            return message.channel.send(retString);
+            let retString = `\`\`\`${message.guild.name} Trivia Scores:`;
+            let sql = `SELECT user_id id FROM guild_members WHERE guild_id = ${message.guild.id}`;
+            let table = [];
+            triviadb.all(sql, (err, row) => {
+                if (err) console.log(err.message);
+                if (!row) return message.send(`Nobody on this server has played trivia.`);
+                row.forEach(r => {
+                    triviadb.get(`SELECT user_id id, name n, score s FROM users WHERE user_id = ${r.id}`, (err, userEntry) => {
+                        if (!userEntry) return;
+                        table.push(userEntry);
+                    });
+                    setTimeout(() => {
+                        table = table.sort((a,b) => (a.s > b.s));
+                        table.forEach(e => retString += `\n${e.n}: ${e.s}`);
+                        return message.channel.send(retString + '\`\`\`');
+                    }, 500);
+                });
+            });
+            return;
         } else if (args[i] == '-reset') {
             RefreshTriviaToken();
         } else if (args[i] == '-h' || args[i] == '-help') {
@@ -459,91 +476,90 @@ async function Trivia(message, args) {
         resp.on('end', () => {
             let question = JSON.parse(data);
             if (question.response_code == 2) message.channel.send(`Trivia API Error: ${apicall} returned invalid parameter`)
-            else if (question.response_code == 3 || question.response_code == 4) return RefreshTriviaToken();
+            else if (question.response_code == 4) {
+                RefreshTriviaToken();
+                return Trivia(message, args);
+            } else if (question.response_code == 3) {
+                GenerateNewTriviaToken();
+                return Trivia(message, args);
+            }
             question = question.results[0];
             question.question = question.question.replace(/&quot;/g, '\"').replace(/&#039;/g, '\'').replace(/&eacute;/g, 'é');
             let questionReward = TriviaDifficultyToScore(question.difficulty);
-            //Multiple Choice
+            
+            let correct_answer;
+            let formattedResponse;
+            let answerEmotes;
             if (question.type == 'multiple') {
                 let answerIdx = 0;
                 let answers = [];
-                let answerEmotes = [`🇦`, `🇧`, `🇨`, `🇩`]
+                answerEmotes = [`🇦`, `🇧`, `🇨`, `🇩`]
                 answers = question.incorrect_answers.sort(() => Math.random() - 0.5);
                 answerIdx = Math.floor(Math.random() * answers.length);
                 answers.splice(answerIdx, 0, question.correct_answer);
-                let formattedResponse = `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
+                formattedResponse = `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
                 for (i = 0; i < answers.length; i++)
                     formattedResponse += `\n${answerEmotes[i]} - ${answers[i]}`
-
-                message.channel.send(formattedResponse).then(m => {
-                    m.react(`🇦`);
-                    m.react(`🇧`);
-                    m.react(`🇨`);
-                    m.react(`🇩`);
-
-                    const filter = (reaction, user) => reaction.emoji.name == answerEmotes[answerIdx] && !user.bot;
-                    m.awaitReactions(filter, { time: triviaTimeout }).then(collected => {
-                        let correct_users = '';
-                        collected.forEach(c => {
-                            c.users.forEach(user => {
-                                if (!user.bot) {
-                                    correct_users += ` ${user.username},`;
-                                    ModTriviaScore(user, questionReward);
-                                }
-                            })
-                        });
-                        correct_users = correct_users.slice(0, -1);
-                        let retString = `Awnser: ${answerEmotes[answerIdx]}`;
-                        return m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
-                    });
-                });
+                correct_answer = answerEmotes[answerIdx];
+            } else {
+                formattedResponse = `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
+                correct_answer = question.correct_answer === 'True' ? '✅' : '❎';
+                answerEmotes = [`✅`, `❎`];
             }
+            message.channel.send(formattedResponse).then(m => {
+                answerEmotes.forEach(e => m.react(e));
 
-            //True or False
-            else {
-                let formattedResponse = `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
-                let correct_answer = question.correct_answer === 'True' ? '✅' : '❎';
-
-                message.channel.send(formattedResponse).then(m => {
-                    m.react(`✅`);
-                    m.react(`❎`);
-
-                    const filter = (reaction, user) => reaction.emoji.name === correct_answer && !user.bot;
-                    m.awaitReactions(filter, { time: triviaTimeout }).then(collected => {
-                        let correct_users = '';
-                        collected.forEach(c => {
-                            c.users.forEach(user => {
-                                if (!user.bot) {
-                                    correct_users += ` ${user.username},`;
-                                    ModTriviaScore(user, questionReward);
-                                }
-                            })
+                const filter = (reaction, user) => (/*reaction.emoji.name == correct_answer && !user.bot*/true);
+                m.awaitReactions(filter, { time: triviaTimeout }).then(collected => {
+                    let correct_users = '';
+                    let disqual_users = '';
+                    let finalWinners = collected.get(correct_answer).users;
+                    let disqualified = [];
+                    for(i = 0; i < answerEmotes.length; i++) {
+                        if (answerEmotes[i] == correct_answer) continue;
+                        finalWinners = finalWinners.filter(u => {
+                            let vs = collected.get(answerEmotes[i]).users.get(u.id);
+                            let a = finalWinners.get(u.id);
+                            if (vs && a && a.bot == false && vs.id == a.id)
+                                if (!disqualified.includes(vs.username))
+                                disqualified.push(vs.username);
+                            return !(vs && a && vs.id == a.id);
                         });
-                        correct_users = correct_users.slice(0, -1);
-                        let retString = `Awnser: ${correct_answer}`;
-                        return m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
-                    });
+                    }
+                    finalWinners.forEach(user => correct_users += ` ${user.username},`);
+                    disqualified.forEach(u => disqual_users += ` ${u},`);
+                    ModTriviaScores(finalWinners, questionReward, message.guild);
+                    
+                    correct_users = correct_users.slice(0, -1);
+                    disqual_users = disqual_users.slice(0, -1);
+                    let retString = `Awnser: ${correct_answer}`;
+                    if (disqualified.length > 0) retString += `\nDisqualified: ${disqual_users}`;
+                    return m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
                 });
-            }
+            });
         });
     }).on("error", (err) => {
         return message.channel.send("Trivia API Error: " + err.message);
     });
-    //check, x
 }
 
-function ModTriviaScore(user, value) {
-    let entry = triviaScores.get(user.id);
-    if (entry === undefined) {
-        entry = {
-            username: user.username,
-            score: value
-        };
-        triviaScores.set(user.id, entry);
-    }
-    else {
-        entry.score += value;
-    }
+async function ModTriviaScores(users, value, guild) {
+    //check for user exists in guild members
+    let sql = `SELECT user_id id FROM guild_members WHERE guild_id = ${guild.id}`;
+    triviadb.all(sql, (err, row) => {
+        if (err) console.log(err.message);
+        let newUsers = users.filter(u => !row.filter(r => u.id == r.id).length > 0);
+        newUsers.forEach(u => triviadb.run(`INSERT INTO guild_members (user_id, guild_id) VALUES (${u.id}, ${guild.id})`));
+    });
+    //update or insert users state
+    users.forEach(u => {
+        triviadb.get(`SELECT score s FROM users WHERE user_id = ${u.id}`, (err, row) => {
+            if (err) console.log(err.message);
+            if (row) triviadb.run(`UPDATE users SET name = \'${u.username}\', score = ${row.s + value} WHERE user_id = ${u.id}`);
+            else triviadb.run(`INSERT INTO users (user_id, name, score) VALUES (${u.id}, \'${u.username}\', ${value})`);
+        });
+    })
+    triviadb.run(`UPDATE guilds SET total_score = total_score + ${users.size * value} WHERE guild_id = ${guild.id}`);
 }
 
 function TriviaDifficultyToScore(difficulty) {
@@ -565,5 +581,47 @@ function RefreshTriviaToken() {
         });
     }).on("error", (err) => {
         console.log("Trivia HTTP Error: " + err.message);
+    });
+}
+
+function GenerateNewTriviaToken() {
+    https.get('https://opentdb.com/api_token.php?command=request', (resp) => {
+        let data = '';
+        resp.on('data', (chunk) => {
+            data += chunk;
+        });
+        resp.on('end', () => {
+            triviaToken = JSON.parse(data).token;
+            console.log(`Trivia token retrieved: ${triviaToken}`);
+        });
+    }).on("error", (err) => {
+        console.log("Trivia HTTP Error: " + err.message);
+    });
+}
+
+function TriviaDBUpdateGuild(guild) {
+    let sql = `SELECT name n FROM guilds WHERE guild_id = ${guild.id};`;
+    triviadb.get(sql, (err, row) => {
+        if (err) return console.log(err.message);
+        if (!row) return TriviaDBCreateGuild(guild);
+
+        sql = `UPDATE guilds SET name = \'${guild.name}\' WHERE guild_id = ${guild.id};`;
+        triviadb.run(sql, (err) => {
+            if (err) console.log(err.message);
+        });
+    });
+}
+
+function TriviaDBCreateGuild(guild) {
+    let sql = `INSERT INTO guilds (guild_id, name, total_score) VALUES (${guild.id}, \'${guild.name}\', 0);`;
+    triviadb.run(sql, (err) => {
+        if (err) console.log(err.message);
+    });
+}
+
+function TriviaDBRemoveGuild(guild) {
+    let sql = `DELETE FROM guilds WHERE guild_id = ${guild.id};`;
+    triviadb.run(sql, (err) => {
+        if (err) console.log(err.message);
     });
 }
