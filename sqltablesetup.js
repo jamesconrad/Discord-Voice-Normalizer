@@ -28,7 +28,7 @@ triviadb.run(sqlcreatecommand, (err) => {
 sqlcreatecommand = `CREATE TABLE users (
     user_id TEXT PRIMARY KEY,
     name TEXT,
-    score TEXT,
+    score INT,
     FOREIGN KEY (user_id) REFERENCES guild_members(user_id)
 );`;
 

@@ -453,12 +453,12 @@ async function Trivia(message, args) {
                         if (!userEntry) return;
                         table.push(userEntry);
                     });
-                    setTimeout(() => {
-                        table = table.sort((a,b) => (a.s > b.s));
-                        table.forEach(e => retString += `\n${e.n}: ${e.s}`);
-                        return message.channel.send(retString + '\`\`\`');
-                    }, 500);
                 });
+                setTimeout(() => {
+                    table = table.sort((a,b) => (a.s < b.s));
+                    table.forEach(e => retString += `\n${e.n}: ${e.s}`);
+                    return message.channel.send(retString + '\`\`\`');
+                }, 500);
             });
             return;
         } else if (args[i] == '-reset') {
