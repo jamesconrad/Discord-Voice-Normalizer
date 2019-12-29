@@ -130,7 +130,7 @@ client.on('message', async message => {
         if (!guildNormal) return message.channel.send('I need to be in your voice channel to display user volumes!');
         let s = 'Listing perceived user volumes:\n';
         guildNormals.forEach(guild => {
-            guildNormal.userStats.forEach(user => { if (user.user.id != botUID) s += `${user.user.username} -> ${user.perceivedVolume.ToFixed(2)}dB\n` });
+            guildNormal.userStats.forEach(user => { if (user.user.id != botUID) s += `${user.user.username} -> ${user.perceivedVolume.toFixed(2)}dB\n` });
         })
         message.channel.send(s);
         return;
@@ -455,10 +455,7 @@ async function Trivia(message, args) {
                     });
                 });
                 setTimeout(() => {
-                    console.log(table);
                     table = table.sort((a,b) => (b.s - a.s));
-                    console.log('->');
-                    console.log(table);
                     table.forEach(e => retString += `\n${e.n}: ${e.s}`);
                     return message.channel.send(retString + '\`\`\`');
                 }, 500);
