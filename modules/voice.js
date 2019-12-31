@@ -57,7 +57,7 @@ async function userLeftVoice(voiceState) {
 
         //check if we are last, and leave
         if (guildNormal.userStats.size == 1)
-            voiceState.channel.leave();
+            leaveChannel(guildNormal);
     }
 }
 exports.userLeftVoice = userLeftVoice;
@@ -128,7 +128,7 @@ async function joinChannel(message, guildNormal) {
                 EndRecording(guildNormals.get(connection.channel.id), user);
             }
         })
-
+        console.log(`Joined voice channel: ${connection.channel.guild.name} -> ${connection.channel.name}`);
     } catch (err) {
         //cleanup and send error in channel
         console.log(err);
@@ -138,6 +138,12 @@ async function joinChannel(message, guildNormal) {
 }
 exports.joinChannel = joinChannel;
 
+async function leaveChannel(guildNormal) {
+    guildNormals.delete(guildNormal.connection.channel.id);
+    console.log(`Leaving voice channel: ${guildNormal.connection.channel.guild.name} -> ${guildNormal.connection.channel.name}\n\tCurrently in ${guildNormals.size} channels.`);
+    guildNormal.connection.channel.leave();
+}
+exports.leaveChannel = leaveChannel;
 /**
  * Begins receiving voice, and calculates average volumes of each voice chunk
  * @param {GuildNormal} guildNormal - The guildNormal the speaker is a part of.
@@ -176,6 +182,10 @@ exports.BeginRecording = BeginRecording;
  */
 async function EndRecording(guildNormal, user) {
     const userStat = guildNormal.userStats.get(user.id);
+    if (userStat.perceivedTotalSampleAvg === undefined) {
+        console.log('End Recording error printout:')
+        console.log(userStat);
+    }
     let dB = ToDecibels(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
     userStat.perceivedVolume = dB;
     //console.log(`Overall volume for ${userStat.user.username}: ${userStat.perceivedVolume}dB`);

@@ -67,16 +67,13 @@ client.on('message', async message => {
         voiceModule.Normalize(guildNormal, message, args);
         return;
     } else if (command == 'leavevoice' || command == 'l') {
-        if (!guildNormal) return message.channel.send('I need to be in your voice channel to leave it!');
-        voiceModule.guildNormals.delete(message.member.voice.channel.id);
-        message.member.voice.channel.leave();
+        if (!guildNormal) return message.channel.send('I need to be in your voice channel to leave it!');    
+        voiceModule.leaveChannel(guildNormal);
         return;
     } else if (command == 'volume' || command == 'v') {
         if (!guildNormal) return message.channel.send('I need to be in your voice channel to display user volumes!');
         let s = 'Listing perceived user volumes:\n';
-        voiceModule.guildNormals.forEach(guild => {
-            guildNormal.userStats.forEach(user => { if (user.user.id != botUID) s += `${user.user.username} -> ${user.perceivedVolume.toFixed(2)}dB\n` });
-        })
+        guildNormal.userStats.forEach(user => { if (!user.user.bot) s += `${user.user.username} -> ${user.perceivedVolume.toFixed(2)}dB\n` });
         message.channel.send(s);
         return;
     } else if (command == 'trivia') {
