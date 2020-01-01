@@ -33,7 +33,8 @@ exports.Initialize = Initialize;
 
 async function Trivia(message, args) {
     let apicall = `https://opentdb.com/api.php?amount=1&token=${trivia.apiToken}`;
-
+    let repeatIdx = 0;
+    let repeatCount = 0;
     for (i = 0; i < args.length; i++) {
         if (args[i] == '-categories') {
             let retString = 'Possible categories are:';
@@ -76,6 +77,12 @@ async function Trivia(message, args) {
             RefreshTriviaToken();
         } else if (args[i] == '-h' || args[i] == '-help') {
             return message.channel.send('Use !help for a comprehensive list of commands.');
+        } else if (args[i] == '-r' && args.length > i + 1){
+            let n = Number(args[i+1]);
+            if (n === NaN)
+                return message.channel.send('Invalid repeat count.');
+            repeatCount = Number(args[i+1]);
+            repeatIdx = i+1;
         }
     }
 
@@ -99,7 +106,7 @@ async function Trivia(message, args) {
             let questionReward = TriviaDifficultyToScore(question.difficulty);
             
             let correct_answer;
-            let formattedResponse;
+            let formattedResponse = '';
             let answerEmotes;
             if (question.type == 'multiple') {
                 let answerIdx = 0;
@@ -108,7 +115,8 @@ async function Trivia(message, args) {
                 answers = question.incorrect_answers.sort(() => Math.random() - 0.5);
                 answerIdx = Math.floor(Math.random() * answers.length);
                 answers.splice(answerIdx, 0, question.correct_answer);
-                formattedResponse = `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
+                if (repeatCount >= 0) formattedResponse += `Questions remaing in repeat: ${repeatCount}`;
+                formattedResponse += `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
                 for (i = 0; i < answers.length; i++)
                     formattedResponse += `\n${answerEmotes[i]} - ${answers[i]}`
                 correct_answer = answerEmotes[answerIdx];
@@ -145,7 +153,13 @@ async function Trivia(message, args) {
                     disqual_users = disqual_users.slice(0, -1);
                     let retString = `Awnser: ${correct_answer}`;
                     if (disqualified.length > 0) retString += `\nDisqualified: ${disqual_users}`;
-                    return m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
+                    if (repeatCount > 0) {
+                        m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
+                        args[repeatIdx] = repeatCount - 1;
+                        return Trivia(message, args);
+                    }
+                    else
+                        return m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
                 });
             });
         });
@@ -253,6 +267,7 @@ function AddHelpPages() {
             {name: '!trivia -c [number]', value: 'Play a trivia from the given category.', inline: true},
             {name: '!trivia -categories', value: 'List all available categories.', inline: true},
             {name: '!trivia -score', value: 'Display this servers trivia leaderboards.', inline: true},
+            {name: '!trivia -r [number]', value: 'Repeats the category number times.', inline: true},
         ]
     };
     help.AddPage('trivia', page);
