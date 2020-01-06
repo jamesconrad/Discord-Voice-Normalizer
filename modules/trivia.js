@@ -151,7 +151,7 @@ async function Trivia(message, args) {
                     
                     correct_users = correct_users.slice(0, -1);
                     disqual_users = disqual_users.slice(0, -1);
-                    let retString = `Awnser: ${correct_answer}`;
+                    let retString = `Answer: ${correct_answer}`;
                     if (disqualified.length > 0) retString += `\nDisqualified: ${disqual_users}`;
                     if (repeatCount > 0) {
                         m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
