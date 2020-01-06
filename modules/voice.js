@@ -182,6 +182,7 @@ exports.BeginRecording = BeginRecording;
  */
 async function EndRecording(guildNormal, user) {
     const userStat = guildNormal.userStats.get(user.id);
+    if (userStat === undefined) return; //the user left the voice channel before stopping their transmission
     if (userStat.perceivedTotalSampleAvg === undefined) {
         console.log('End Recording error printout:')
         console.log(userStat);
