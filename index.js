@@ -44,6 +44,10 @@ client.on('guildDelete', guild => {
 client.on('message', async message => {
     //ignore invalid messages
     if (message.author.bot) return;
+    if (message.channel.type ==  'dm') {
+        helpModule.OnDirectMessage(message);
+        return;
+    }
     if (!message.content.startsWith(prefix)) return;
 
     //check for user to be in GuildNormals

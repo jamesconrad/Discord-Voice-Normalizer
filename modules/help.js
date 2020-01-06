@@ -3,12 +3,21 @@ const Discord = require('discord.js');
 const activeHelps = new Map();
 let pages = [];
 
+var fs = require('fs');
+var csvWriter = require('csv-write-stream');
+var dmLog = csvWriter({sendHeaders: false});
+
 const reactArray = ['◀️','▶️','⏪','⏩','❌'];
 
 function Initialize() {
+    //open dmg logging file
+    dmLog.pipe(fs.createWriteStream('log.csv', {flags: 'a'}));;
     let page = {
         description: `Help Module\n\nTo navigate the menu click a react emote at the bottom.`,
-        fields: [{name: '!help', value: 'Display this menu'}]
+        fields: [
+            {name: '!help', value: 'Display this menu'},
+            {name: 'Reporting an error/issue', value: 'Simply send a dm to this bot, note the dm will be recorded.\nPlease include any additional information you can, and only send a single message per error.'}
+        ]
     };
     AddPage('help', page);
 }
@@ -78,3 +87,17 @@ function OnReact(reaction, user) {
     //reaction.remove(user);
     activeHelp.currentPage = newPage;
 }
+
+function OnDirectMessage(message) {
+    if(message.author.bot)
+        return;
+    let date = new Date(message.createdTimestamp);
+    console.log(`${message.author.username}: ${message.content}, ${date.toLocaleString()}`);
+    dmLog.write({
+        timeStamp: `${date.toLocaleString()}`,
+        userName: message.author.username,
+        userID: message.author.id,
+        content: message.content.replace(/,/g, '').replace(/\n/g, '')
+    });
+}
+exports.OnDirectMessage = OnDirectMessage;
