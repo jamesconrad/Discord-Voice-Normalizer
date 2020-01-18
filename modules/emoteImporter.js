@@ -3,6 +3,13 @@ const request = require('request').defaults({ encoding: null });
 const help = require('../modules/help');
 const Discord = require('discord.js');
 let client;
+const {
+    prefix,
+    token,
+    botUID,
+    minSampleVoldB,
+    triviaTimeout,
+} = require('../config.json');
 
 async function Initialize(_client) {
     client = _client;
@@ -11,7 +18,9 @@ async function Initialize(_client) {
 exports.Initialize = Initialize;
 
 async function ImportEmote(message, args) {
-    if (args.length <= 0) return message.channel.send("You didn't specify any emojis to add.")
+    if (!message.member.hasPermission('MANAGE_EMOJIS')) return message.channel.send(`You need permission for managing emoji's to use this command.`);
+    if (!message.guild.members.get(botUID).hasPermission('MANAGE_EMOJIS')) return message.channel.send(`I need permission for managing emoji's to continue.`);
+    if (args.length <= 0) return message.channel.send("You didn't specify any emojis to add.");
 
     let result = await AttemptEmoteImports(message, args);
     
