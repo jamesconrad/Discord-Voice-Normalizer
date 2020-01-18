@@ -12,12 +12,14 @@ const {
 const helpModule = require('./modules/help');
 const triviaModule = require('./modules/trivia');
 const voiceModule = require('./modules/voice');
+const emoteModule = require('./modules/emoteImporter');
 
 //trivia setup:
 console.log('Performing pre-discord module setups...');
 helpModule.Initialize();
 voiceModule.Initialize(minSampleVoldB);
 triviaModule.Initialize(triviaTimeout);
+emoteModule.Initialize(client);
 console.log('Attempting Discord connection...');
 
 client.login(token);
@@ -25,6 +27,7 @@ client.login(token);
 client.once('ready', () => {
     console.log(`Ready! Connected to ${client.guilds.size} server(s)`);
     client.guilds.forEach(g => triviaModule.TriviaDBUpdateGuild(g));
+    client.user.setPresence({activity: {name: `${prefix}help`}, status: 'online'});
 });
 client.once('reconnecting', () => {
     console.log('Reconnecting!');
@@ -84,6 +87,8 @@ client.on('message', async message => {
         triviaModule.Trivia(message, args)
     } else if (command == 'ee') {
         EscapeEmote(message, args)
+    } else if (command == 'addemote') {
+        emoteModule.ImportEmote(message, args);
     } else {
         message.channel.send('Invalid command, try !help.')
     }
