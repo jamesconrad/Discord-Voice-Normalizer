@@ -2,7 +2,7 @@ const https = require('https');
 const sqlite = require('sqlite3');
 const help = require('../modules/help');
 let trivia = {
-    apiToken: 0,//session token
+    apiTokens: new Map(),//session token
     categories: [],
     timeout: 0,
     db: 0
@@ -11,7 +11,6 @@ let trivia = {
 async function Initialize(questionTimeout) {
     AddHelpPages();
     trivia.timeout = questionTimeout;
-    GenerateNewTriviaToken();
     trivia.db = new sqlite.Database('./db/trivia.db', sqlite.OPEN_READWRITE, (err) => {
         if (err) console.log(err.message);
         else console.log('Trivia DB Connected');
@@ -32,7 +31,11 @@ async function Initialize(questionTimeout) {
 exports.Initialize = Initialize;
 
 async function Trivia(message, args) {
-    let apicall = `https://opentdb.com/api.php?amount=1&token=${trivia.apiToken}`;
+    if (!trivia.apiTokens.has(message.guild.id))
+        await GenerateNewTriviaToken(message.guild.id);
+    let token = trivia.apiTokens.get(message.guild.id);
+
+    let apicall = `https://opentdb.com/api.php?amount=1&token=${token}`;
     let repeatIdx = 0;
     let repeatCount = 0;
     for (i = 0; i < args.length; i++) {
@@ -74,7 +77,7 @@ async function Trivia(message, args) {
             });
             return;
         } else if (args[i] == '-reset') {
-            RefreshTriviaToken();
+            await RefreshTriviaToken();
         } else if (args[i] == '-h' || args[i] == '-help') {
             return message.channel.send('Use !help for a comprehensive list of commands.');
         } else if (args[i] == '-r' && args.length > i + 1){
@@ -86,19 +89,19 @@ async function Trivia(message, args) {
         }
     }
 
-    https.get(apicall, (resp) => {
+    https.get(apicall, async (resp) => {
         let data = '';
         resp.on('data', (chunk) => {
             data += chunk;
         });
-        resp.on('end', () => {
+        resp.on('end', async() => {
             let question = JSON.parse(data);
             if (question.response_code == 2) message.channel.send(`Trivia API Error: ${apicall} returned invalid parameter`)
             else if (question.response_code == 4) {
-                RefreshTriviaToken();
+                await RefreshTriviaToken(message.guild.id);
                 return Trivia(message, args);
             } else if (question.response_code == 3) {
-                GenerateNewTriviaToken();
+                await GenerateNewTriviaToken(message.guild.id);
                 return Trivia(message, args);
             }
             question = question.results[0];
@@ -197,34 +200,42 @@ function TriviaDifficultyToScore(difficulty) {
 }
 exports.TriviaDifficultyToScore = TriviaDifficultyToScore;
 
-function RefreshTriviaToken() {
-    https.get(`https://opentdb.com/api_token.php?command=reset&token=${trivia.apiToken}`, (resp) => {
-        let data = '';
-        resp.on('data', (chunk) => {
-            data += chunk;
+function RefreshTriviaToken(guidId) {
+    return new Promise(resolve => {
+        https.get(`https://opentdb.com/api_token.php?command=reset&token=${trivia.apiTokens.get(guildId)}`, (resp) => {
+            let data = '';
+            resp.on('data', (chunk) => {
+                data += chunk;
+            });
+            resp.on('end', () => {
+                trivia.apiTokens.set(guildId, JSON.parse(data).token);
+                console.log(`Trivia token reset: ${trivia.apiTokens.get(guildId)}`);
+                resolve();
+            });
+        }).on("error", (err) => {
+            console.log("Trivia HTTP Error: " + err.message);
+            resolve();
         });
-        resp.on('end', () => {
-            trivia.apiToken = JSON.parse(data).token;
-            console.log(`Trivia token reset: ${trivia.apiToken}`);
-        });
-    }).on("error", (err) => {
-        console.log("Trivia HTTP Error: " + err.message);
     });
 }
 exports.RefreshTriviaToken = RefreshTriviaToken;
 
-function GenerateNewTriviaToken() {
-    https.get('https://opentdb.com/api_token.php?command=request', (resp) => {
-        let data = '';
-        resp.on('data', (chunk) => {
-            data += chunk;
+function GenerateNewTriviaToken(guildId) {
+    return new Promise(resolve => {
+        https.get('https://opentdb.com/api_token.php?command=request', (resp) => {
+            let data = '';
+            resp.on('data', (chunk) => {
+                data += chunk;
+            });
+            resp.on('end', () => {
+                trivia.apiTokens.set(guildId, JSON.parse(data).token);
+                console.log(`Trivia token retrieved: ${trivia.apiTokens.get(guildId)}`);
+                resolve();
+            });
+        }).on("error", (err) => {
+            console.log("Trivia HTTP Error: " + err.message);
+            resolve();
         });
-        resp.on('end', () => {
-            trivia.apiToken = JSON.parse(data).token;
-            console.log(`Trivia token retrieved: ${trivia.apiToken}`);
-        });
-    }).on("error", (err) => {
-        console.log("Trivia HTTP Error: " + err.message);
     });
 }
 exports.GenerateNewTriviaToken = GenerateNewTriviaToken;
