@@ -17,7 +17,7 @@ const emoteModule = require('./modules/emoteImporter');
 //trivia setup:
 console.log('Performing pre-discord module setups...');
 helpModule.Initialize();
-voiceModule.Initialize(minSampleVoldB);
+voiceModule.Initialize(minSampleVoldB, client);
 triviaModule.Initialize(triviaTimeout);
 emoteModule.Initialize(client);
 console.log('Attempting Discord connection...');
@@ -95,10 +95,23 @@ client.on('message', async message => {
 });
 
 client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
-    //determine whether user joined, left, or moved voice channels
-    if (oldVoiceState.channelID === null || oldVoiceState.channelID === undefined) voiceModule.userJoinedVoice(newVoiceState);
-    else if (newVoiceState.channelID === null) voiceModule.userLeftVoice(oldVoiceState);
-    else voiceModule.userMovedVoice(oldVoiceState, newVoiceState);
+    //determine whether user joined, left, moved, or simply updated voice state (muted)
+    if (oldVoiceState.channelID === null || oldVoiceState.channelID === undefined) {
+        //joined
+        return voiceModule.userJoinedVoice(newVoiceState);
+    }
+    else if (newVoiceState.channelID === null || newVoiceState.channelID === undefined) {
+        //left
+        return voiceModule.userLeftVoice(oldVoiceState);
+    }
+    else if (oldVoiceState.channelID != newVoiceState.channelID && oldVoiceState.channel !== undefined && newVoiceState.channel !== undefined) {
+        //moved
+        return voiceModule.userMovedVoice(oldVoiceState, newVoiceState);
+    }
+    else if (oldVoiceState.channelID == newVoiceState.channelID){
+        //state updated
+        return;
+    }
 });
 
 async function EscapeEmote(message, args) {
