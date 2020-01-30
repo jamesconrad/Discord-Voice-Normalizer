@@ -8,11 +8,13 @@ const {
     botUID,
     minSampleVoldB,
     triviaTimeout,
+    node_id
 } = require('./config.json');
 const helpModule = require('./modules/help');
 const triviaModule = require('./modules/trivia');
 const voiceModule = require('./modules/voice');
 const emoteModule = require('./modules/emoteImporter');
+const updateModule = require('./modules/autoupdate');
 
 //trivia setup:
 console.log('Performing pre-discord module setups...');
@@ -20,12 +22,15 @@ helpModule.Initialize();
 voiceModule.Initialize(minSampleVoldB, client);
 triviaModule.Initialize(triviaTimeout);
 emoteModule.Initialize(client);
+updateModule.Initialize(client);
 console.log('Attempting Discord connection...');
 
 client.login(token);
 
 client.once('ready', () => {
-    console.log(`Ready! Connected to ${client.guilds.size} server(s)`);
+    let numUsers = 0;
+    client.guilds.forEach(g => numUsers += g.memberCount);
+    console.log(`Ready! Connected to ${client.guilds.size} server(s), containing ${numUsers} users in total.`);
     client.guilds.forEach(g => triviaModule.TriviaDBUpdateGuild(g));
     client.user.setPresence({activity: {name: `${prefix}help`}, status: 'online'});
 });
