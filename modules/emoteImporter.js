@@ -102,7 +102,9 @@ async function AddEmote(ffzEmote, guild) {
     return new Promise(async resolve => {
         let emote;
         console.log(`Fetching ${ffzEmote.name} from: ${ffzEmote.urls[1]}`);
-        request.get('https:' + ffzEmote.urls[1], async (err, res, body) => {
+        //determine largest dpi, given by key
+        let highestDPI = Math.max.apply(null, Object.keys(ffzEmote.urls));
+        request.get('https:' + ffzEmote.urls[highestDPI], async (err, res, body) => {
             if (err != null) return console.log(err);
             emote = await guild.emojis.create(body, ffzEmote.name);
             resolve(emote);
