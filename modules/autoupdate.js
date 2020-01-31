@@ -4,10 +4,8 @@ const fs = require('fs');
 const config = require('../config.json');
 let client;
 
-
-
 function Initialize(_client) {
-    client = _client;
+    client = _client
     UpdateController();
 }
 exports.Initialize = Initialize;
@@ -39,7 +37,7 @@ async function CheckForUpdate() {
 
             fs.writeFileSync('./config.json', JSON.stringify(config, null, 4));
             //config.json has been updated, time to trigger the restart for the bash script.
-            console.log('Update successful, Waiting for chance to restart.');
+            console.log('Waiting for chance to restart.');
             await WaitForInactiveState();
             console.log('Restart window detected, begining countdown.');
             //5mins, 2.5mins, 1min, 30s, 15s
@@ -74,6 +72,10 @@ async function WaitForInactiveState() {
 //begin a countdown until restart
 async function RestartCountdown(notifyArray) {
     return new Promise(resolve => {
+        if (notifyArray.length == 0) {
+            client.user.setPresence({ activity: { name: `Restarting, Please wait.` }, status: 'online' });
+            return resolve();
+        }
         let countdownReadable = { value: 0, unit: '' };
         let timeToNextNotify = 0
 
@@ -83,25 +85,21 @@ async function RestartCountdown(notifyArray) {
             timeToNextNotify = notifyArray[0] - notifyArray[1];
             //convert time to a readable format
             if (timeToNextNotify >= 60000) {
-                countdownReadable.value = timeToNextNotify / 60000;
+                countdownReadable.value = notifyArray[0] / 60000;
                 countdownReadable.value > 1 ? countdownReadable.unit = 'minutes' : countdownReadable.unit = 'minute';
             }
             else {
-                countdownReadable.value = timeToNextNotify / 1000;
+                countdownReadable.value = notifyArray[0] / 1000;
                 countdownReadable.unit = 'seconds';
             }
         }
 
         //notify users via bot status
-        if (countdownReadable.value != 0) {
+        if (countdownReadable.value > 0)
             client.user.setPresence({ activity: { name: `Restarting in: ${countdownReadable.value} ${countdownReadable.unit}` }, status: 'online' });
-        }
-        else {
-            client.user.setPresence({ activity: { name: `Restarting, Please wait.` }, status: 'online' });
-            resolve();
-        }
 
         //remove first element and shift array left
-        setTimeout(timeToNextNotify, RestartCountdown(notifyArray.shift()));
+        notifyArray.shift()
+        setTimeout(() => { RestartCountdown(notifyArray).then(resolve()) }, timeToNextNotify);
     });
 }
