@@ -1,8 +1,10 @@
 const https = require('https');
 const request = require('request').defaults({ encoding: null });
+const activity = require('../modules/activity');
 const help = require('../modules/help');
 const Discord = require('discord.js');
 let client;
+let importing = false;
 const {
     prefix,
     token,
@@ -14,6 +16,7 @@ const {
 async function Initialize(_client) {
     client = _client;
     AddHelpPages();
+    activity.AddActivityCheck('emoteImporter', IsActive);
 }
 exports.Initialize = Initialize;
 
@@ -21,11 +24,12 @@ async function ImportEmote(message, args) {
     if (!message.member.hasPermission('MANAGE_EMOJIS')) return message.channel.send(`You need permission for managing emoji's to use this command.`);
     if (!message.guild.members.get(botUID).hasPermission('MANAGE_EMOJIS')) return message.channel.send(`I need permission for managing emoji's to continue.`);
     if (args.length <= 0) return message.channel.send("You didn't specify any emojis to add.");
-
+    importing = true;
     let result = await AttemptEmoteImports(message, args);
     
     //special response when only a single emote was requested
     if (args.length == 1) {
+        importing = false;
         if (result.existing.length >= 1) return message.channel.send(`There is already an emote using that name: ${result.existing[0]}`);
         else if (result.notfound.length >= 1) return message.channel.send(`I could not find an emote called ${result.notfound[0]} on FrankerFaceZ`);
         else return message.channel.send(`Emote successfully added: ${result.added[0]}`);
@@ -45,6 +49,7 @@ async function ImportEmote(message, args) {
         retString += 'The following were successfully added:\n'
         result.added.forEach(e => { retString += ' ' + e.toString() });
     }
+    importing = false;
     return message.channel.send(retString);
 }
 exports.ImportEmote = ImportEmote;
@@ -110,6 +115,10 @@ async function AddEmote(ffzEmote, guild) {
             resolve(emote);
         });
     });
+}
+
+function IsActive() {
+    return importing;
 }
 
 function AddHelpPages() {

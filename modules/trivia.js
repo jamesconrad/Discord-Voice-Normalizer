@@ -1,15 +1,18 @@
 const https = require('https');
 const sqlite = require('sqlite3');
 const help = require('../modules/help');
+const activity = require('../modules/activity');
 let trivia = {
     apiTokens: new Map(),//session token
     categories: [],
     timeout: 0,
-    db: 0
+    db: 0,
+    lastUsed: new Date()
 };
 
 async function Initialize(questionTimeout) {
     AddHelpPages();
+    activity.AddActivityCheck('trivia', IsActive)
     trivia.timeout = questionTimeout;
     trivia.db = new sqlite.Database('./db/trivia.db', sqlite.OPEN_READWRITE, (err) => {
         if (err) console.log(err.message);
@@ -31,6 +34,7 @@ async function Initialize(questionTimeout) {
 exports.Initialize = Initialize;
 
 async function Trivia(message, args) {
+    trivia.lastUsed = new Date();
     if (!trivia.apiTokens.has(message.guild.id))
         await GenerateNewTriviaToken(message.guild.id);
     let token = trivia.apiTokens.get(message.guild.id);
@@ -269,6 +273,12 @@ function TriviaDBRemoveGuild(guild) {
     });
 }
 exports.TriviaDBRemoveGuild = TriviaDBRemoveGuild;
+
+//returns time since last global trivia call in ms
+function IsActive() {
+    let now = new Date();
+    return (now - trivia.lastUsed) < 300000;
+}
 
 function AddHelpPages() {
     let page = {

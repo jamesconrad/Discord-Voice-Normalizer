@@ -1,6 +1,7 @@
 //setup endless silence audio stream
 const { Readable } = require('stream');
 const help = require('../modules/help');
+const activity = require('../modules/activity');
 const SILENCE_FRAME = Buffer.from([0xF8, 0xFF, 0xFE]);
 class Silence extends Readable {
     _read() {
@@ -16,6 +17,7 @@ async function Initialize(minSampleVol, botClient) {
     minSampleVoldB = minSampleVol;
     client = botClient;
     AddHelpPages();
+    activity.AddActivityCheck('voice', IsActive);
 }
 exports.Initialize = Initialize;
 
@@ -303,6 +305,10 @@ function ToDecibels(num) {
     return 20 * Math.log10(num)
 }
 exports.ToDecibels = ToDecibels;
+
+function IsActive() {
+    return guildNormals.size == 0;
+}
 
 function AddHelpPages() {
     let page = {
