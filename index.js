@@ -16,16 +16,16 @@ const voiceModule = require('./modules/voice');
 const emoteModule = require('./modules/emoteImporter');
 const updateModule = require('./modules/autoupdate');
 
-//trivia setup:
-console.log('Performing pre-discord module setups...');
-helpModule.Initialize();
-voiceModule.Initialize(minSampleVoldB, client);
-triviaModule.Initialize(triviaTimeout);
-emoteModule.Initialize(client);
-updateModule.Initialize(client);
 console.log('Attempting Discord connection...');
+client.login(token).then(() => {
+    console.log('Performing module setups...');
+    helpModule.Initialize();
+    voiceModule.Initialize(minSampleVoldB, client);
+    triviaModule.Initialize(triviaTimeout);
+    emoteModule.Initialize(client);
+    updateModule.Initialize(client);
+});
 
-client.login(token);
 
 client.once('ready', () => {
     let numUsers = 0;
