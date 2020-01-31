@@ -60,13 +60,13 @@ async function UpdateController() {
 async function WaitForInactiveState() {
     let activityCheck = new Promise(resolve => {
         //check every minute
-        setTimeout(1000 * 60, () => {
+        setTimeout(() => {
             if (activity.CheckActivity().result == false)
                 resolve();
-        });
+        }, 1000 * 60);
     });
     let timeout = new Promise(resolve => {
-        setTimeout(1000 * 60 * 30, resolve());
+        setTimeout(resolve(), 1000 * 60 * 30);
     });
     return Promise.race([activityCheck, timeout]);
 }
