@@ -7,7 +7,7 @@ exports.AddActivityCheck = AddActivityCheck;
 
 //returns activity information
 function CheckActivity() {
-    let ret = {result: flase, modules: []}
+    let ret = {result: false, modules: []}
     activityChecks.forEach(e => {
         let active = e.func();
         ret.modules.push({name: e.name, result: active});
