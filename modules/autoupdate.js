@@ -84,7 +84,7 @@ async function RestartCountdown(notifyArray) {
             //convert time to a readable format
             if (timeToNextNotify >= 60000) {
                 countdownReadable.value = timeToNextNotify / 60000;
-                countdownReadalbe.value > 1 ? countdownReadable.unit = 'minutes' : countdownReadable.unit = 'minute';
+                countdownReadable.value > 1 ? countdownReadable.unit = 'minutes' : countdownReadable.unit = 'minute';
             }
             else {
                 countdownReadable.value = timeToNextNotify / 1000;
