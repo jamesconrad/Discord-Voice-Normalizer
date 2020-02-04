@@ -26,7 +26,7 @@ async function ImportEmote(message, args) {
     if (args.length <= 0) return message.channel.send("You didn't specify any emojis to add.");
     importing = true;
     let result = await AttemptEmoteImports(message, args);
-    
+
     //special response when only a single emote was requested
     if (args.length == 1) {
         importing = false;
@@ -42,11 +42,11 @@ async function ImportEmote(message, args) {
         result.existing.forEach(e => { retString += ' ' + e.toString() });
     }
     if (result.notfound.length >= 1) {
-        retString += 'The following were not found on FrankerFaceZ:\n'
+        retString += '\nThe following were not found on FrankerFaceZ:\n'
         result.notfound.forEach(e => { retString += ' ' + e.toString() });
     }
     if (result.added.length >= 1) {
-        retString += 'The following were successfully added:\n'
+        retString += '\nThe following were successfully added:\n'
         result.added.forEach(e => { retString += ' ' + e.toString() });
     }
     importing = false;
@@ -68,38 +68,47 @@ async function AttemptEmoteImports(message, args) {
                 if (found) {
                     results.existing.push(found);
                     completed++;
-                    return
+                    if (completed >= args.length)
+                        resolveBar();
                 }
-                let apiCall;
-                if (isNaN(+emote)) apiCall = `https://api.frankerfacez.com/v1/emoticons?q=${emote}&sort=count-desc&per_page=200`
-                else apiCall = `https://api.frankerfacez.com/v1/emote/${+emote}`;
-                https.get(apiCall, (resp) => {
-                    let data = '';
-                    resp.on('data', (chunk) => {
-                        data += chunk;
-                    });
-                    resp.on('end', async () => {
-                        let r = JSON.parse(data);
-                        //verify we recieved more than one emote, filter any non exact matches, and verify we have atleast 1 left
-                        if (r.emoticons !== undefined && r.emoticons.length >= 1) {
-                            let correctEmote = r.emoticons.filter(e => e.name === emote);
-                            if (correctEmote.length <= 0) results.notfound.push(emote);
-                            else {
-                                //select the most popular emote
-                                correctEmote = correctEmote.sort((a, b) => b.usage_count - a.usage_count)[0];
-                                results.added.push(await AddEmote(correctEmote, message.guild));
+                else {
+                    let apiCall;
+                    if (isNaN(+emote)) apiCall = `https://api.frankerfacez.com/v1/emoticons?q=${emote}&sort=count-desc&per_page=200`
+                    else apiCall = `https://api.frankerfacez.com/v1/emote/${+emote}`;
+                    await https.get(apiCall, async resp => {
+                        let data = '';
+                        resp.on('data', (chunk) => {
+                            data += chunk;
+                        });
+                        resp.on('end', async () => {
+                            let r = JSON.parse(data);
+                            //apicall used the emote name
+                            //verify we recieved more than one emote, filter any non exact matches, and verify we have atleast 1 left
+                            if (r.emoticons !== undefined && r.emoticons.length >= 1) {
+                                let correctEmote = r.emoticons.filter(e => e.name === emote);
+                                if (correctEmote.length <= 0) results.notfound.push(emote);
+                                else {
+                                    //select the most popular emote
+                                    correctEmote = correctEmote.sort((a, b) => b.usage_count - a.usage_count)[0];
+                                    results.added.push(await AddEmote(correctEmote, message.guild));
+                                }
                             }
-                        }
-                        else if (r.emote !== undefined) results.added.push(await AddEmote(r.emote, message.guild));
-                        else results.notfound.push(emote);
-                        completed++
-                        if (completed >= args.length)
-                            resolveBar();
+                            //apicall used the emote id
+                            else if (r.emote !== undefined) {
+                                let found = message.guild.emojis.find(emoji => emoji.name === r.emote.name);
+                                if (found) results.existing.push(found);
+                                else results.added.push(await AddEmote(r.emote, message.guild));
+                            }
+                            else results.notfound.push(emote);
+                            completed++
+                            if (completed >= args.length)
+                                resolveBar();
+                        });
                     });
-                });
+                }
             });
         });
-        bar.then(() => {resolve(results)});
+        bar.then(() => { resolve(results) });
     });
 }
 
@@ -125,7 +134,7 @@ function AddHelpPages() {
     let page = {
         description: `Emote Import Module.`,
         fields: [
-            { name: '!addemote [name/id]', value: 'Import an emote by name from FrankerFaceZ.\nMultiple emotes can be imported at once.\nexample: !emote monkaS OMEGALUL 381875', inline: true }
+            { name: '!addemote [name/id]', value: 'Import an emote by name from FrankerFaceZ.\nMultiple emotes can be imported at once.\nexample: !addemote monkaS OMEGALUL 381875', inline: true }
         ]
     };
     help.AddPage('emoteImporter', page);
