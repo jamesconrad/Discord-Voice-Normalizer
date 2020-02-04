@@ -1,13 +1,10 @@
 #!/bin/bash
 ##Main script to handle bot execution
 
-valid=true
-while [$valid]
-do
+while true; do
     node index.js &>>log
     val=$?
-    if [$val -eq 0];
-    then
+    if [$val -eq 0]; then
         echo "Pulling from Github."
         git pull origin/master
         echo "Pull complete, Restarting."
