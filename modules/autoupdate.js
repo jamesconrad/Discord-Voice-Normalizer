@@ -43,7 +43,7 @@ async function CheckForUpdate() {
             //5mins, 2.5mins, 1min, 30s, 15s
             await RestartCountdown([300000, 150000, 60000, 30000, 15000, 0]);
             console.log('Countdown finished, exiting process.');
-            //process.exit(1);
+            process.exit(0);
         });
     });
 };
@@ -69,7 +69,7 @@ async function WaitForInactiveState() {
     return Promise.race([activityCheck, timeout]);
 }
 
-//begin a countdown until restart
+//begin a countdown until restart, notifyArray's last element must be 0
 async function RestartCountdown(notifyArray) {
     return new Promise(resolve => {
         if (notifyArray.length == 0) {
