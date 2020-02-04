@@ -11,7 +11,7 @@ const reactArray = ['◀️','▶️','⏪','⏩','❌'];
 
 function Initialize() {
     //open dmg logging file
-    dmLog.pipe(fs.createWriteStream('log.csv', {flags: 'a'}));;
+    dmLog.pipe(fs.createWriteStream('dmlog.csv', {flags: 'a'}));;
     let page = {
         description: `Help Module\n\nTo navigate the menu click a react emote at the bottom.`,
         fields: [
