@@ -4,7 +4,7 @@
 valid=true
 while [$valid]
 do
-    node index.js
+    node index.js &>>log
     val=$?
     if [$val -eq 0];
     then
