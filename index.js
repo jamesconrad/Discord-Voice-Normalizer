@@ -7,28 +7,31 @@ const triviaModule = require('./modules/trivia');
 const voiceModule = require('./modules/voice');
 const emoteModule = require('./modules/emoteImporter');
 const updateModule = require('./modules/autoupdate');
+const database = require('./modules/database');
 
 //conncet to discord
 console.log('Attempting Discord connection...');
-client.login(config.token).then(() => {
+client.login(config.token);
+
+//once connected, display some general stats
+client.once('ready', async () => {
+    let numUsers = 0;
+    client.guilds.forEach(g => numUsers += g.memberCount);
+    console.log(`Ready! Connected to ${client.guilds.size} server(s), containing ${numUsers} users in total.`);
+    //set bots "playing" status to be the help command
+    client.user.setPresence({activity: {name: `${config.prefix}help`}, status: 'online'});
+
     //initialize all modules
     console.log('Performing module setups...');
+    await database.Initialize();
     helpModule.Initialize();
     voiceModule.Initialize(client);
     triviaModule.Initialize();
     emoteModule.Initialize(client);
     updateModule.Initialize(client);
-});
 
-//once connected, display some general stats
-client.once('ready', () => {
-    let numUsers = 0;
-    client.guilds.forEach(g => numUsers += g.memberCount);
-    console.log(`Ready! Connected to ${client.guilds.size} server(s), containing ${numUsers} users in total.`);
-    //update trivia db
-    client.guilds.forEach(g => triviaModule.TriviaDBUpdateGuild(g));
-    //set bots "playing" status to be the help command
-    client.user.setPresence({activity: {name: `${config.prefix}help`}, status: 'online'});
+    //update db
+    client.guilds.forEach(g => database.UpdateGuild(g));
 });
 //inform disconnect, and reconnects
 client.once('reconnecting', () => {
@@ -40,12 +43,12 @@ client.once('disconnect', () => {
 //log and create a table for any guilds the bot is added to
 client.on('guildCreate', guild => {
     console.log(`Added to Guild: ${guild.name}`);
-    triviaModule.TriviaDBCreateGuild(guild)
+    database.CreateGuild(guild)
 });
 //log and delete the table for any guilds the bot is removed from
 client.on('guildDelete', guild => {
     console.log(`Removed from Guild: ${guild.name}`);
-    triviaModule.TriviaDBRemoveGuild(guild);
+    database.RemoveGuild(guild);
 });
 
 client.on('message', async message => {

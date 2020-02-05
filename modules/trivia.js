@@ -1,7 +1,7 @@
 const https = require('https');
-const sqlite = require('sqlite3');
 const help = require('../modules/help');
 const activity = require('../modules/activity');
+const database = require('../modules/database');
 
 const config = require('../config.json');
 
@@ -9,7 +9,7 @@ let trivia = {
     apiTokens: new Map(),//session token
     categories: [],
     timeout: 0,
-    db: 0,
+    //db: 0,
     lastUsed: new Date()
 };
 
@@ -17,10 +17,6 @@ async function Initialize() {
     AddHelpPages();
     activity.AddActivityCheck('trivia', IsActive)
     trivia.timeout = config.triviaTimeout;
-    trivia.db = new sqlite.Database('./db/trivia.db', sqlite.OPEN_READWRITE, (err) => {
-        if (err) console.log(err.message);
-        else console.log('Trivia DB Connected');
-    });
     https.get('https://opentdb.com/api_category.php', (resp) => {
         let data = '';
         resp.on('data', (chunk) => {
@@ -32,7 +28,7 @@ async function Initialize() {
     }).on("error", (err) => {
         console.log("Trivia HTTP Error: " + err.message);
     });
-    console.log('Trivia Module Initialized.');
+    console.log('Trivia Initialized.');
 }
 exports.Initialize = Initialize;
 
@@ -66,21 +62,19 @@ async function Trivia(message, args) {
         } else if (args[i] == '-score') {
             let retString = `\`\`\`${message.guild.name} Trivia Scores:`;
             let sql = `SELECT user_id id FROM guild_members WHERE guild_id = ${message.guild.id}`;
-            let table = [];
-            trivia.db.all(sql, (err, row) => {
-                if (err) console.log(err.message);
-                if (!row) return message.send(`Nobody on this server has played trivia.`);
-                row.forEach(r => {
-                    trivia.db.get(`SELECT user_id id, name n, score s FROM users WHERE user_id = ${r.id}`, (err, userEntry) => {
+            database.all(sql, async (row) => {
+                let table = [];
+                if (!row) return message.channel.send(`Nobody on this server has played trivia.`);
+                await Promise.all(row.map(async (r) => {
+                    let entry = await database.getPromise(`SELECT user_id id, name n, score s FROM users WHERE user_id = ${r.id}`, async (userEntry) => {
                         if (!userEntry) return;
-                        table.push(userEntry);
+                        return userEntry;
                     });
-                });
-                setTimeout(() => {
-                    table = table.sort((a,b) => (b.s - a.s));
-                    table.forEach(e => retString += `\n${e.n}: ${e.s}`);
-                    return message.channel.send(retString + '\`\`\`');
-                }, 500);
+                    table.push(entry);
+                }));
+                table = table.sort((a,b) => (b.s - a.s));
+                table.forEach(e => retString += `\n${e.n}: ${e.s}`);
+                return message.channel.send(retString + '\`\`\`');
             });
             return;
         } else if (args[i] == '-reset') {
@@ -182,20 +176,18 @@ exports.Trivia = Trivia;
 async function ModTriviaScores(users, value, guild) {
     //check for user exists in guild members
     let sql = `SELECT user_id id FROM guild_members WHERE guild_id = ${guild.id}`;
-    trivia.db.all(sql, (err, row) => {
-        if (err) console.log(err.message);
+    database.all(sql, (row) => {
         let newUsers = users.filter(u => !row.filter(r => u.id == r.id).length > 0);
-        newUsers.forEach(u => trivia.db.run(`INSERT INTO guild_members (user_id, guild_id) VALUES (${u.id}, ${guild.id})`));
+        newUsers.forEach(u => database.run(`INSERT INTO guild_members (user_id, guild_id) VALUES (${u.id}, ${guild.id})`));
     });
     //update or insert users state
     users.forEach(u => {
-        trivia.db.get(`SELECT score s FROM users WHERE user_id = ${u.id}`, (err, row) => {
-            if (err) console.log(err.message);
-            if (row) trivia.db.run(`UPDATE users SET name = \'${u.username}\', score = ${row.s + value} WHERE user_id = ${u.id}`);
-            else trivia.db.run(`INSERT INTO users (user_id, name, score) VALUES (${u.id}, \'${u.username}\', ${value})`);
+        database.get(`SELECT score s FROM users WHERE user_id = ${u.id}`, (row) => {
+            if (row) database.run(`UPDATE users SET name = \'${u.username}\', score = ${row.s + value} WHERE user_id = ${u.id}`);
+            else database.run(`INSERT INTO users (user_id, name, score) VALUES (${u.id}, \'${u.username}\', ${value})`);
         });
     })
-    trivia.db.run(`UPDATE guilds SET total_score = total_score + ${users.size * value} WHERE guild_id = ${guild.id}`);
+    database.run(`UPDATE guilds SET total_score = total_score + ${users.size * value} WHERE guild_id = ${guild.id}`);
 }
 exports.ModTriviaScores = ModTriviaScores;
 
@@ -246,36 +238,6 @@ function GenerateNewTriviaToken(guildId) {
     });
 }
 exports.GenerateNewTriviaToken = GenerateNewTriviaToken;
-
-function TriviaDBUpdateGuild(guild) {
-    let sql = `SELECT name n FROM guilds WHERE guild_id = ${guild.id};`;
-    trivia.db.get(sql, (err, row) => {
-        if (err) return console.log(err.message);
-        if (!row) return TriviaDBCreateGuild(guild);
-
-        sql = `UPDATE guilds SET name = \'${guild.name}\' WHERE guild_id = ${guild.id};`;
-        trivia.db.run(sql, (err) => {
-            if (err) console.log(err.message);
-        });
-    });
-}
-exports.TriviaDBUpdateGuild = TriviaDBUpdateGuild;
-
-function TriviaDBCreateGuild(guild) {
-    let sql = `INSERT INTO guilds (guild_id, name, total_score) VALUES (${guild.id}, \'${guild.name}\', 0);`;
-    trivia.db.run(sql, (err) => {
-        if (err) console.log(err.message);
-    });
-}
-exports.TriviaDBCreateGuild = TriviaDBCreateGuild;
-
-function TriviaDBRemoveGuild(guild) {
-    let sql = `DELETE FROM guilds WHERE guild_id = ${guild.id};`;
-    trivia.db.run(sql, (err) => {
-        if (err) console.log(err.message);
-    });
-}
-exports.TriviaDBRemoveGuild = TriviaDBRemoveGuild;
 
 //returns time since last global trivia call in ms
 function IsActive() {

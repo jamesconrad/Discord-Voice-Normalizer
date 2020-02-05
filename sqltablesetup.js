@@ -1,6 +1,6 @@
 
 const sqlite = require('sqlite3');
-let triviadb = new sqlite.Database('./db/trivia.db', sqlite.OPEN_CREATE | sqlite.OPEN_READWRITE, (err) => {
+let triviadb = new sqlite.Database('./db/primary.db', sqlite.OPEN_CREATE | sqlite.OPEN_READWRITE, (err) => {
     if (err) console.log(err.message);
 });
 
@@ -8,7 +8,9 @@ let triviadb = new sqlite.Database('./db/trivia.db', sqlite.OPEN_CREATE | sqlite
 let sqlcreatecommand = `CREATE TABLE guilds (
     guild_id TEXT PRIMARY KEY,
     name TEXT,
-    total_score INT
+    total_score INT,
+    prefix TEXT,
+    disabled_modules INT
 );`;
 
 triviadb.run(sqlcreatecommand, (err) => {
