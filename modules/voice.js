@@ -2,6 +2,8 @@
 const { Readable } = require('stream');
 const help = require('../modules/help');
 const activity = require('../modules/activity');
+const config = require('../config.json');
+
 const SILENCE_FRAME = Buffer.from([0xF8, 0xFF, 0xFE]);
 class Silence extends Readable {
     _read() {
@@ -10,11 +12,10 @@ class Silence extends Readable {
 }
 const guildNormals = new Map();
 exports.guildNormals = guildNormals;
-let minSampleVoldB;
+let minSampleVoldB = config.minSampleVoldB;
 let client;
 
-async function Initialize(minSampleVol, botClient) {
-    minSampleVoldB = minSampleVol;
+async function Initialize(botClient) {
     client = botClient;
     AddHelpPages();
     activity.AddActivityCheck('voice', IsActive);

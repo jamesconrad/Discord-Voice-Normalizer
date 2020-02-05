@@ -33,21 +33,25 @@ async function CheckForUpdate() {
             //compare current node_id to the one we just fetched, if the same then just exit the function
             if (response.commit.node_id == config.node_id) return;
             console.log(`Update detected, ${response.commit.node_id}`);
-            config.node_id = response.commit.node_id;
 
+            //update config's node id
+            config.node_id = response.commit.node_id;
             fs.writeFileSync('./config.json', JSON.stringify(config, null, 4));
-            //config.json has been updated, time to trigger the restart for the bash script.
+            //config.json has been updated, time to wait for the bot to be inactive
             console.log('Waiting for chance to restart.');
             await WaitForInactiveState();
+            //and to preform a countdown inside the bots "playing" status message
             console.log('Restart window detected, begining countdown.');
-            //5mins, 2.5mins, 1min, 30s, 15s
+            //notify countdown at 5mins, 2.5mins, 1min, 30s, 15s
             await RestartCountdown([300000, 150000, 60000, 30000, 15000, 0]);
+            //return control to the parent bash script
             console.log('Countdown finished, exiting process.');
             process.exit(0);
         });
     });
 };
 
+//check and re-call every 12hrs
 async function UpdateController() {
     //check for update
     CheckForUpdate();
@@ -55,23 +59,27 @@ async function UpdateController() {
     setTimeout(UpdateController, 1000 * 60 * 60 * 12);
 }
 
+//promises a moment when the bot is inactive, or after 30mins, whichever is shorter
 async function WaitForInactiveState() {
+    //create the actiivty promise, checks activity ever minute and if inactive resolves
     let activityCheck = new Promise(resolve => {
-        //check every minute
         setTimeout(() => {
             if (activity.CheckActivity().result == false)
                 resolve();
         }, 1000 * 60);
     });
+    //create the 30min timer promise
     let timeout = new Promise(resolve => {
         setTimeout(resolve(), 1000 * 60 * 30);
     });
+    //resolve the overall promise once either finish
     return Promise.race([activityCheck, timeout]);
 }
 
-//begin a countdown until restart, notifyArray's last element must be 0
+//begin a countdown until restart, updating presence every interval of notifyArray, notifyArray's last element must be 0, first element determines countdown duration
 async function RestartCountdown(notifyArray) {
     return new Promise(resolve => {
+        //resolve all recursive promises once our notifyArray is 0 (timer complete)
         if (notifyArray.length == 0) {
             client.user.setPresence({ activity: { name: `Restarting, Please wait.` }, status: 'online' });
             return resolve();
@@ -100,6 +108,7 @@ async function RestartCountdown(notifyArray) {
 
         //remove first element and shift array left
         notifyArray.shift()
+        //call ourself again, with the shorter array, after this segment is complete
         setTimeout(() => { RestartCountdown(notifyArray).then(resolve()) }, timeToNextNotify);
     });
 }

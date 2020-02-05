@@ -2,6 +2,9 @@ const https = require('https');
 const sqlite = require('sqlite3');
 const help = require('../modules/help');
 const activity = require('../modules/activity');
+
+const config = require('../config.json');
+
 let trivia = {
     apiTokens: new Map(),//session token
     categories: [],
@@ -10,10 +13,10 @@ let trivia = {
     lastUsed: new Date()
 };
 
-async function Initialize(questionTimeout) {
+async function Initialize() {
     AddHelpPages();
     activity.AddActivityCheck('trivia', IsActive)
-    trivia.timeout = questionTimeout;
+    trivia.timeout = config.triviaTimeout;
     trivia.db = new sqlite.Database('./db/trivia.db', sqlite.OPEN_READWRITE, (err) => {
         if (err) console.log(err.message);
         else console.log('Trivia DB Connected');
