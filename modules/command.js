@@ -20,12 +20,14 @@ function ParseMessage(message) {
         helpModule.OnDirectMessage(message);
         return;
     }
-    //verify the command begins with the guilds prefix
+    
     let prefix = database.GetGuildConfig(message.guild.id).prefix;
-    if (!message.content.startsWith(prefix)) return;
+    
     //check if they used !help, which must always remain due to discord not allowing server specific status messages.
-    else if (message.content.startsWith('!') && message.content.toLowerCase() === 'help')
-        commands.get('help')(message, args);
+    if (message.content.startsWith('!') && message.content.toLowerCase() === '!help')
+        return commands.get('help')(message, null);
+    //verify the command begins with the guilds prefix
+    else if (!message.content.startsWith(prefix)) return;
 
     //parse command and arguments, then handle accordingly
     const args = message.content.slice(prefix.length).split(/ +/);

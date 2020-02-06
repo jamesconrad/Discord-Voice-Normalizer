@@ -34,7 +34,8 @@ exports.Initialize = Initialize;
 //display the interactive help menu
 function Help(message, args) {
     //send the first page,
-    message.channel.send(GetPage(0)).then(m => {
+    let prefix = database.GetGuildConfig(message.guild.id).prefix;
+    message.channel.send(GetPage(0, prefix)).then(m => {
         //add this help menu to the tracker
         activeHelps.set(m.id, {currentPage: 0, message: m});
         reactArray.forEach(e => m.react(e));
@@ -61,7 +62,7 @@ function AddPage(owner, page) {
 exports.AddPage = AddPage;
 
 //returns the requested page by id
-function GetPage(pagenum){
+function GetPage(pagenum, prefix){
     //verify
     if (pagenum > pages.length - 1 || pagenum < 0)
         return 'ERROR Page out of bounds';
@@ -70,8 +71,17 @@ function GetPage(pagenum){
         .setColor('#0099ff')
         .setTitle('Conrad 2.0 Help Menu')
         .setFooter(`Page ${pagenum + 1} / ${pages.length}`);
-    page.description = pages[pagenum].description;
-    page.fields = pages[pagenum].fields;
+    //swap to the correct prefix
+    let description = pages[pagenum].description;
+    //description.replace(/!/g, prefix);
+    let fields = pages[pagenum].fields;
+    //fields.forEach(field => {
+    //    field.name = field.name.replace(/!/g, prefix);
+    //    field.value = field.value.replace(/!/g, prefix);
+    //});
+    //add the proper prefix pages in
+    page.description = description;
+    page.fields = fields;
     //return the embed page
     return page;
 }
@@ -84,23 +94,24 @@ function OnReact(reaction, user) {
     let activeHelp = activeHelps.get(reaction.message.id);
     let curPage = activeHelp.currentPage;
     let newPage = 0;
+    let prefix = database.GetGuildConfig(reaction.message.guild.id).prefix;
     //verify reaction was a valid emoji
     switch (reaction.emoji.name) {
         case reactArray[0]: //prev page
             newPage = curPage <= 0 ? pages.length - 1 : curPage - 1;
-            reaction.message.edit(GetPage(newPage));
+            reaction.message.edit(GetPage(newPage, prefix));
             break;
         case reactArray[1]: //next page
             newPage = curPage >= pages.length - 1 ? 0 : curPage + 1;
-            reaction.message.edit(GetPage(newPage));
+            reaction.message.edit(GetPage(newPage, prefix));
             break;
         case reactArray[2]: //prev module
             //newPage = curPage >= pages.length - 1 ? 0 : curPage + 1;
-            reaction.message.edit(GetPage(newPage));
+            reaction.message.edit(GetPage(newPage, prefix));
             break;
         case reactArray[3]: //next module
             //newPage = curPage >= pages.length - 1 ? 0 : curPage + 1;
-            reaction.message.edit(GetPage(newPage));
+            reaction.message.edit(GetPage(newPage, prefix));
             break;
         case reactArray[4]: //delete
             reaction.message.delete();
