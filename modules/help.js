@@ -73,12 +73,14 @@ function GetPage(pagenum, prefix){
         .setFooter(`Page ${pagenum + 1} / ${pages.length}`);
     //swap to the correct prefix
     let description = pages[pagenum].description;
-    //description.replace(/!/g, prefix);
-    let fields = pages[pagenum].fields;
-    //fields.forEach(field => {
-    //    field.name = field.name.replace(/!/g, prefix);
-    //    field.value = field.value.replace(/!/g, prefix);
-    //});
+    description.replace(/!/g, prefix);
+    //deep copy fields
+    let fields = [];
+    pages[pagenum].fields.forEach(f => fields.push(JSON.parse(JSON.stringify(f))));
+    fields.forEach(field => {
+        field.name = field.name.replace(/!/g, prefix);
+        field.value = field.value.replace(/!/g, prefix);
+    });
     //add the proper prefix pages in
     page.description = description;
     page.fields = fields;
