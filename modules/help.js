@@ -1,21 +1,29 @@
 
 const Discord = require('discord.js');
+const command = require('../modules/command');
+const database = require('../modules/database');
 const activeHelps = new Map();
 let pages = [];
 
 var fs = require('fs');
 var csvWriter = require('csv-write-stream');
+
 var dmLog = csvWriter({sendHeaders: false});
 
 const reactArray = ['◀️','▶️','⏪','⏩','❌'];
 
 function Initialize() {
+    //register commands
+    command.RegisterCommand('help', Help);
+    command.RegisterCommand('changeprefix', ChangePrefix);
+
     //open dmg logging file
     dmLog.pipe(fs.createWriteStream('dmlog.csv', {flags: 'a'}));;
     let page = {
         description: `Help Module\n\nTo navigate the menu click a react emote at the bottom.`,
         fields: [
             {name: '!help', value: 'Display this menu'},
+            {name: '!changeprefix', value: 'Change the prefix for all commands. Requires user to have administrator permission.'},
             {name: 'Reporting an error/issue', value: 'Simply send a dm to this bot, note the dm will be recorded.\nPlease include any additional information you can, and only send a single message per error.'}
         ]
     };
@@ -24,7 +32,7 @@ function Initialize() {
 exports.Initialize = Initialize;
 
 //display the interactive help menu
-function Help(message) {
+function Help(message, args) {
     //send the first page,
     message.channel.send(GetPage(0)).then(m => {
         //add this help menu to the tracker
@@ -119,3 +127,16 @@ function OnDirectMessage(message) {
     });
 }
 exports.OnDirectMessage = OnDirectMessage;
+
+//change prefix command
+function ChangePrefix(message, args) {
+    //verify permissions, arg count, new prefix length, and filter escape characters
+    if (!message.member.hasPermission('ADMINISTRATOR')) return message.channel.send(`You need the administrator permission to use this command.`);
+    if (args.length < 1) return message.channel.send('You need to specify the new prefix.');
+    else if (args.length > 1) return message.channel.send('You cannot specify more than one new prefix');
+    else if (args[0].length > 1) return message.channel.send('Prefix must be a single character.');
+    guildConfig = database.GetGuildConfig(message.guild.id);
+    guildConfig.prefix = args[0];
+    database.UpdateGuildConfig(guildConfig);
+    return message.channel.send(`Command prefix has been changed to: ${args[0]}`);
+}

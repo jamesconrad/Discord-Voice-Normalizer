@@ -8,6 +8,7 @@ const voiceModule = require('./modules/voice');
 const emoteModule = require('./modules/emoteImporter');
 const updateModule = require('./modules/autoupdate');
 const database = require('./modules/database');
+const command = require('./modules/command');
 
 //conncet to discord
 console.log('Attempting Discord connection...');
@@ -52,53 +53,7 @@ client.on('guildDelete', guild => {
 });
 
 client.on('message', async message => {
-    //ignore invalid messages
-    if (message.author.bot) return;
-    if (message.channel.type ==  'dm') {
-        helpModule.OnDirectMessage(message);
-        return;
-    }
-    if (!message.content.startsWith(config.prefix)) return;
-
-    //check for user to be in GuildNormals
-    let guildNormal = false;
-    if (message.member.voice.channelID !== undefined) {
-        guildNormal = voiceModule.guildNormals.get(message.member.voice.channel.id);
-    }
-
-    //parse command and arguments, then handle accordingly
-    const args = message.content.slice(config.prefix.length).split(/ +/);
-    const command = args.shift().toLowerCase();
-
-    if (command == 'help') {
-        helpModule.Help(message);
-        return;
-    } else if (command == 'joinvoice' || command == 'j') {
-        voiceModule.joinChannel(message);
-        return;
-    } else if (command == 'normalize' || command == 'n') {
-        if (!guildNormal) return message.channel.send('I need to be in your voice channel to calculate norrmals!');
-        voiceModule.Normalize(guildNormal, message, args);
-        return;
-    } else if (command == 'leavevoice' || command == 'l') {
-        if (!guildNormal) return message.channel.send('I need to be in your voice channel to leave it!');    
-        voiceModule.leaveChannel(guildNormal);
-        return;
-    } else if (command == 'volume' || command == 'v') {
-        if (!guildNormal) return message.channel.send('I need to be in your voice channel to display user volumes!');
-        let s = 'Listing perceived user volumes:\n';
-        guildNormal.userStats.forEach(user => { if (!user.user.bot) s += `${user.user.username} -> ${user.perceivedVolume.toFixed(2)}dB\n` });
-        message.channel.send(s);
-        return;
-    } else if (command == 'trivia') {
-        triviaModule.Trivia(message, args)
-    } else if (command == 'ee') {
-        EscapeEmote(message, args)
-    } else if (command == 'addemote') {
-        emoteModule.ImportEmote(message, args);
-    } else {
-        message.channel.send('Invalid command, try !help.')
-    }
+    command.ParseMessage(message);
 });
 
 //called any time a user joins/leaves/moves voice channels, or mutes/deafens

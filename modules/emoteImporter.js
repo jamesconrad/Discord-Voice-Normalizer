@@ -2,18 +2,14 @@ const https = require('https');
 const request = require('request').defaults({ encoding: null });
 const activity = require('../modules/activity');
 const help = require('../modules/help');
+const command = require('../modules/command')
 const Discord = require('discord.js');
 let client;
 let importing = false;
-const {
-    prefix,
-    token,
-    botUID,
-    minSampleVoldB,
-    triviaTimeout,
-} = require('../config.json');
+const config = require('../config.json');
 
 async function Initialize(_client) {
+    command.RegisterCommand('addemote', ImportEmote);
     client = _client;
     AddHelpPages();
     activity.AddActivityCheck('emoteImporter', IsActive);
@@ -24,7 +20,7 @@ exports.Initialize = Initialize;
 async function ImportEmote(message, args) {
     //verify permissions
     if (!message.member.hasPermission('MANAGE_EMOJIS')) return message.channel.send(`You need permission for managing emoji's to use this command.`);
-    if (!message.guild.members.get(botUID).hasPermission('MANAGE_EMOJIS')) return message.channel.send(`I need permission for managing emoji's to continue.`);
+    if (!message.guild.members.get(config.botUID).hasPermission('MANAGE_EMOJIS')) return message.channel.send(`I need permission for managing emoji's to continue.`);
     //verify args
     if (args.length <= 0) return message.channel.send("You didn't specify any emojis to add.");
     //set the activity flag for the activity monitor

@@ -1,7 +1,9 @@
 const https = require('https');
 const help = require('../modules/help');
+const validator = require('validator');
 const activity = require('../modules/activity');
 const database = require('../modules/database');
+const command = require('../modules/command');
 
 const config = require('../config.json');
 
@@ -14,6 +16,7 @@ let trivia = {
 };
 
 async function Initialize() {
+    command.RegisterCommand('trivia', Trivia);
     AddHelpPages();
     activity.AddActivityCheck('trivia', IsActive)
     trivia.timeout = config.triviaTimeout;
@@ -73,7 +76,7 @@ async function Trivia(message, args) {
                     table.push(entry);
                 }));
                 table = table.sort((a,b) => (b.s - a.s));
-                table.forEach(e => retString += `\n${e.n}: ${e.s}`);
+                table.forEach(e => retString += `\n${unescape(e.n)}: ${e.s}`);
                 return message.channel.send(retString + '\`\`\`');
             });
             return;
@@ -106,7 +109,7 @@ async function Trivia(message, args) {
                 return Trivia(message, args);
             }
             question = question.results[0];
-            question.question = question.question.replace(/&quot;/g, '\"').replace(/&#039;/g, '\'').replace(/&eacute;/g, 'é');
+            question.question = unescape(question.question);
             let questionReward = TriviaDifficultyToScore(question.difficulty);
             
             let correct_answer;
@@ -183,8 +186,8 @@ async function ModTriviaScores(users, value, guild) {
     //update or insert users state
     users.forEach(u => {
         database.get(`SELECT score s FROM users WHERE user_id = ${u.id}`, (row) => {
-            if (row) database.run(`UPDATE users SET name = \'${u.username}\', score = ${row.s + value} WHERE user_id = ${u.id}`);
-            else database.run(`INSERT INTO users (user_id, name, score) VALUES (${u.id}, \'${u.username}\', ${value})`);
+            if (row) database.run(`UPDATE users SET name = \'${escape(u.username)}\', score = ${row.s + value} WHERE user_id = ${u.id}`);
+            else database.run(`INSERT INTO users (user_id, name, score) VALUES (${u.id}, \'${escape(u.username)}\', ${value})`);
         });
     })
     database.run(`UPDATE guilds SET total_score = total_score + ${users.size * value} WHERE guild_id = ${guild.id}`);

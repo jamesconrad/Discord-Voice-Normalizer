@@ -2,6 +2,7 @@
 const { Readable } = require('stream');
 const help = require('../modules/help');
 const activity = require('../modules/activity');
+const command = require('../modules/command');
 const config = require('../config.json');
 
 const SILENCE_FRAME = Buffer.from([0xF8, 0xFF, 0xFE]);
@@ -16,6 +17,10 @@ let minSampleVoldB = config.minSampleVoldB;
 let client;
 
 async function Initialize(botClient) {
+    command.RegisterCommand('joinvoice', joinChannel);
+    command.RegisterCommand('leavevoice', leaveChannel);
+    command.RegisterCommand('normalize', Normalize);
+    command.RegisterCommand('volume', DisplayVolume);
     client = botClient;
     AddHelpPages();
     activity.AddActivityCheck('voice', IsActive);
@@ -83,7 +88,7 @@ exports.userMovedVoice = userMovedVoice;
  * @param {Message} message - The message that invoked the call in the first place.
  * @param {GuildNormal} guildNormal - The guildNormal the sender is a part of.
  */
-async function joinChannel(message, guildNormal) {
+async function joinChannel(message, args) {
     //confirm if channel is joinable
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) return message.channel.send('You need to be in a voice channel for me to join!');
@@ -145,7 +150,14 @@ async function joinChannel(message, guildNormal) {
 }
 exports.joinChannel = joinChannel;
 
-async function leaveChannel(guildNormal) {
+async function leaveChannel(message, args) {
+    let guildNormal;
+    if (guildNormals.has(message.member.voice.channelID)) {
+        guildNormal = guildNormals.get(message.member.voice.channel.id);
+    } else {
+        return message.channel.send('I need to be in your voice channel to leave it!');
+    }
+
     guildNormals.delete(guildNormal.connection.channel.id);
     console.log(`Leaving voice channel: ${guildNormal.connection.channel.guild.name} -> ${guildNormal.connection.channel.name}\n\tCurrently in ${guildNormals.size} channels.`);
     guildNormal.connection.channel.leave();
@@ -206,7 +218,14 @@ exports.EndRecording = EndRecording;
  * @param {Message} message - The message that invoked the command.
  * @param {string[]} args - Arguments from the execution command. Only first argument is used currently.
  */
-async function Normalize(guildNormal, message, args) {
+async function Normalize(message, args) {
+    let guildNormal;
+    if (guildNormals.has(message.member.voice.channelID)) {
+        guildNormal = guildNormals.get(message.member.voice.channel.id);
+    } else {
+        return message.channel.send('I need to be in your voice channel to calculate norrmals!');
+    }
+
     let retString = ``;
     let quietest;
     let min = 9007199254740992;//max size of int
@@ -297,6 +316,19 @@ async function Normalize(guildNormal, message, args) {
     return message.channel.send(retString);
 }
 exports.Normalize = Normalize;
+
+//displays user volumes of requested channel
+function DisplayVolume(message, args) {
+    let guildNormal;
+    if (guildNormals.has(message.member.voice.channelID)) {
+        guildNormal = guildNormals.get(message.member.voice.channel.id);
+    } else {
+        return message.channel.send('I need to be in your voice channel to display user volumnes!');
+    }
+    let s = 'Listing perceived user volumes:\n';
+    guildNormal.userStats.forEach(user => { if (!user.user.bot) s += `${user.user.username} -> ${user.perceivedVolume.toFixed(2)}dB\n` });
+    return message.channel.send(s);
+}
 
 /**
  * Converts from average linear volumes to dB (logarithmic)

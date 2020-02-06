@@ -1,5 +1,6 @@
 const sqlite = require('sqlite3');
 const config = require('../config.json');
+const validator = require('validator');
 
 let primarydb;
 let guildCache = new Map();
@@ -48,7 +49,7 @@ function run(command) {
     primarydb.run(command);
 }
 exports.run = run;
-async function runPromise(command, callback) {
+async function runPromise(command) {
     return new Promise(async resolve => {
         await primarydb.run(command)
         resolve();
@@ -82,7 +83,7 @@ async function getPromise(command, callback) {
 exports.getPromise = getPromise
 
 function CreateGuild(guild) {
-    let sql = `INSERT INTO guilds (guild_id, name, total_score, prefix, disabled_modules) VALUES (${guild.id}, \'${guild.name}\', 0, \'!\', 0);`;
+    let sql = `INSERT INTO guilds (guild_id, name, total_score, prefix, disabled_modules) VALUES (${guild.id}, \'${escape(guild.name)}\', 0, \'!\', 0);`;
     run(sql, () => {});
 }
 exports.CreateGuild = CreateGuild;
@@ -97,9 +98,10 @@ function UpdateGuild(guild) {
     let sql = `SELECT name n FROM guilds WHERE guild_id = ${guild.id};`;
     get(sql, (row) => {
         if (!row) return CreateGuild(guild);
-
-        sql = `UPDATE guilds SET name = \'${guild.name}\' WHERE guild_id = ${guild.id};`;
-        run(sql, () => {});
+        
+        let cfg = GetGuildConfig(guild.id);
+        cfg.name = guild.name;
+        UpdateGuildConfig(cfg);
     });
 }
 exports.UpdateGuild = UpdateGuild;
@@ -110,6 +112,8 @@ async function BuildGuildCache() {
             await Promise.all(guilds.map(async (guild) => {
                 let sql = `SELECT guild_id, name, total_score, prefix, disabled_modules FROM guilds WHERE guild_id = ${guild.guild_id};`;
                 let e = await getPromise(sql, async (entry) => { return entry });
+                e.name = unescape(e.name);
+                e.prefix = unescape(e.prefix);
                 guildCache.set(e.guild_id, e);
             }));
             resolve();
@@ -125,6 +129,6 @@ exports.GetGuildConfig = GetGuildConfig;
 
 function UpdateGuildConfig(config) {
     guildCache.set(config.guild_id, config);
-    run(`UPDATE guilds SET name = \'${config.name}\', total_score = ${config.total_score}, prefix = \'${config.prefix}\', disabled_modules = ${config.disabled_modules} WHERE guild_id = ${config.guild_id}`)
+    run(`UPDATE guilds SET name = \'${escape(config.name)}\', total_score = ${config.total_score}, prefix = \'${escape(config.prefix)}\', disabled_modules = ${config.disabled_modules} WHERE guild_id = ${config.guild_id}`)
 }
 exports.UpdateGuildConfig = UpdateGuildConfig;
