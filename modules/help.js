@@ -14,16 +14,17 @@ const reactArray = ['◀️','▶️','⏪','⏩','❌'];
 
 function Initialize() {
     //register commands
-    command.RegisterCommand('help', Help);
-    command.RegisterCommand('changeprefix', ChangePrefix);
+    let c = [
+        { command: 'help', callback: Help }
+    ];
+    command.RegisterModule("help", c, false, 0);
 
     //open dmg logging file
     dmLog.pipe(fs.createWriteStream('dmlog.csv', {flags: 'a'}));;
     let page = {
-        description: `Help Module\n\nTo navigate the menu click a react emote at the bottom.`,
+        description: `Module: Help\nTo navigate the menu click a react emote at the bottom.`,
         fields: [
             {name: '!help', value: 'Display this menu'},
-            {name: '!changeprefix', value: 'Change the prefix for all commands. Requires user to have administrator permission.'},
             {name: 'Reporting an error/issue', value: 'Simply send a dm to this bot, note the dm will be recorded.\nPlease include any additional information you can, and only send a single message per error.'}
         ]
     };
@@ -57,12 +58,13 @@ exports.Help = Help;
 
 //adds an embedded message page to the help menu
 function AddPage(owner, page) {
+    page.moduleName = owner;
     pages.push(page);
 }
 exports.AddPage = AddPage;
 
 //returns the requested page by id
-function GetPage(pagenum, prefix){
+function GetPage(pagenum, cfg){
     //verify
     if (pagenum > pages.length - 1 || pagenum < 0)
         return 'ERROR Page out of bounds';
@@ -73,13 +75,15 @@ function GetPage(pagenum, prefix){
         .setFooter(`Page ${pagenum + 1} / ${pages.length}`);
     //swap to the correct prefix
     let description = pages[pagenum].description;
-    description.replace(/!/g, prefix);
+    description.replace(/!/g, cfg.prefix);
+    if (!command.IsEnabled(pages[pagenum].moduleName, cfg.disabled_modules))
+        description += `\n:: DISABLED :: ask an admin to ${cfg.prefix}toggle ${pages[pagenum].moduleName}`;
     //deep copy fields
     let fields = [];
     pages[pagenum].fields.forEach(f => fields.push(JSON.parse(JSON.stringify(f))));
     fields.forEach(field => {
-        field.name = field.name.replace(/!/g, prefix);
-        field.value = field.value.replace(/!/g, prefix);
+        field.name = field.name.replace(/!/g, cfg.prefix);
+        field.value = field.value.replace(/!/g, cfg.prefix);
     });
     //add the proper prefix pages in
     page.description = description;
@@ -96,24 +100,24 @@ function OnReact(reaction, user) {
     let activeHelp = activeHelps.get(reaction.message.id);
     let curPage = activeHelp.currentPage;
     let newPage = 0;
-    let prefix = database.GetGuildConfig(reaction.message.guild.id).prefix;
+    let cfg = database.GetGuildConfig(reaction.message.guild.id);
     //verify reaction was a valid emoji
     switch (reaction.emoji.name) {
         case reactArray[0]: //prev page
             newPage = curPage <= 0 ? pages.length - 1 : curPage - 1;
-            reaction.message.edit(GetPage(newPage, prefix));
+            reaction.message.edit(GetPage(newPage, cfg));
             break;
         case reactArray[1]: //next page
             newPage = curPage >= pages.length - 1 ? 0 : curPage + 1;
-            reaction.message.edit(GetPage(newPage, prefix));
+            reaction.message.edit(GetPage(newPage, cfg));
             break;
         case reactArray[2]: //prev module
             //newPage = curPage >= pages.length - 1 ? 0 : curPage + 1;
-            reaction.message.edit(GetPage(newPage, prefix));
+            reaction.message.edit(GetPage(newPage, cfg));
             break;
         case reactArray[3]: //next module
             //newPage = curPage >= pages.length - 1 ? 0 : curPage + 1;
-            reaction.message.edit(GetPage(newPage, prefix));
+            reaction.message.edit(GetPage(newPage, cfg));
             break;
         case reactArray[4]: //delete
             reaction.message.delete();
@@ -140,16 +144,3 @@ function OnDirectMessage(message) {
     });
 }
 exports.OnDirectMessage = OnDirectMessage;
-
-//change prefix command
-function ChangePrefix(message, args) {
-    //verify permissions, arg count, new prefix length, and filter escape characters
-    if (!message.member.hasPermission('ADMINISTRATOR')) return message.channel.send(`You need the administrator permission to use this command.`);
-    if (args.length < 1) return message.channel.send('You need to specify the new prefix.');
-    else if (args.length > 1) return message.channel.send('You cannot specify more than one new prefix');
-    else if (args[0].length > 1) return message.channel.send('Prefix must be a single character.');
-    guildConfig = database.GetGuildConfig(message.guild.id);
-    guildConfig.prefix = args[0];
-    database.UpdateGuildConfig(guildConfig);
-    return message.channel.send(`Command prefix has been changed to: ${args[0]}`);
-}

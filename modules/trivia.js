@@ -16,7 +16,12 @@ let trivia = {
 };
 
 async function Initialize() {
-    command.RegisterCommand('trivia', Trivia);
+    //register commands
+    let c = [
+        { command: 'trivia', callback: Trivia }
+    ];
+    command.RegisterModule("trivia", c, true, 3);
+    
     AddHelpPages();
     activity.AddActivityCheck('trivia', IsActive)
     trivia.timeout = config.triviaTimeout;
@@ -250,7 +255,7 @@ function IsActive() {
 
 function AddHelpPages() {
     let page = {
-        description: `Trivia Module.`,
+        description: `Module: Trivia`,
         fields: [
             {name: '!trivia', value: 'Play a trivia from a random category.', inline: true},
             {name: '!trivia -c [number]', value: 'Play a trivia from the given category.', inline: true},

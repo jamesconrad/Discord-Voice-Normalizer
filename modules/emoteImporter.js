@@ -9,7 +9,12 @@ let importing = false;
 const config = require('../config.json');
 
 async function Initialize(_client) {
-    command.RegisterCommand('addemote', ImportEmote);
+    //register commands
+    let c = [
+        { command: 'addemote', callback: ImportEmote }
+    ];
+    command.RegisterModule("emoteImporter", c, true, 4);
+
     client = _client;
     AddHelpPages();
     activity.AddActivityCheck('emoteImporter', IsActive);
@@ -155,7 +160,7 @@ function IsActive() {
 
 function AddHelpPages() {
     let page = {
-        description: `Emote Import Module.`,
+        description: `Module: EmoteImport`,
         fields: [
             { name: '!addemote [name/id]', value: 'Import an emote by name from FrankerFaceZ.\nMultiple emotes can be imported at once.\nexample: !addemote monkaS OMEGALUL 381875', inline: true }
         ]

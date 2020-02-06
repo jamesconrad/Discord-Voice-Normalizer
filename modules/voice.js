@@ -17,10 +17,15 @@ let minSampleVoldB = config.minSampleVoldB;
 let client;
 
 async function Initialize(botClient) {
-    command.RegisterCommand('joinvoice', joinChannel);
-    command.RegisterCommand('leavevoice', leaveChannel);
-    command.RegisterCommand('normalize', Normalize);
-    command.RegisterCommand('volume', DisplayVolume);
+    //register commands
+    let c = [
+        { command: 'joinvoice', callback: joinChannel },
+        { command: 'leavevoice', callback: leaveChannel },
+        { command: 'normalize', callback: Normalize },
+        { command: 'volume', callback: DisplayVolume },
+    ];
+    command.RegisterModule("voice", c, true, 2);
+    
     client = botClient;
     AddHelpPages();
     activity.AddActivityCheck('voice', IsActive);
@@ -345,7 +350,7 @@ function IsActive() {
 
 function AddHelpPages() {
     let page = {
-        description: `Voice Normalization Module.`,
+        description: `Module: Voice`,
         fields: [
             { name: '!joinvoice', value: 'Join your voice channel.', inline: true },
             { name: '!leavevoice', value: 'Leave your voice channel.', inline: true },
