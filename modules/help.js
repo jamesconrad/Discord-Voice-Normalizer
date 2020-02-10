@@ -35,8 +35,8 @@ exports.Initialize = Initialize;
 //display the interactive help menu
 function Help(message, args) {
     //send the first page,
-    let prefix = database.GetGuildConfig(message.guild.id).prefix;
-    message.channel.send(GetPage(0, prefix)).then(m => {
+    let cfg = database.GetGuildConfig(message.guild.id);
+    message.channel.send(GetPage(0, cfg)).then(m => {
         //add this help menu to the tracker
         activeHelps.set(m.id, {currentPage: 0, message: m});
         reactArray.forEach(e => m.react(e));
