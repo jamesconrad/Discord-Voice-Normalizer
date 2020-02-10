@@ -48,6 +48,8 @@ function Help(message, args) {
         collector.on('remove', (reaction, user) => { OnReact(reaction,user) });
         //cleanup after timeout has expired
         setTimeout(() => {
+            //if help page was deleted or removed, skip this step
+            if (m.id && !activeHelps.has(m.id)) return;
             activeHelps.delete(m.id);
             m.delete();
         },timeout)
@@ -120,6 +122,7 @@ function OnReact(reaction, user) {
             reaction.message.edit(GetPage(newPage, cfg));
             break;
         case reactArray[4]: //delete
+            activeHelps.delete(reaction.message.id);
             reaction.message.delete();
             break;
     }
