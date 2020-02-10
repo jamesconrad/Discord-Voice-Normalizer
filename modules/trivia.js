@@ -1,4 +1,5 @@
 const https = require('https');
+const Discord = require('discord.js');
 const help = require('../modules/help');
 const validator = require('validator');
 const activity = require('../modules/activity');
@@ -57,14 +58,9 @@ exports.Initialize = Initialize;
 async function Trivia(message, args) {
     //store current time for activity checks
     trivia.lastUsed = new Date();
-    //fetch a trivia token if this guild dosn't have one
-    if (!trivia.apiTokens.has(message.guild.id))
-        await GenerateNewTriviaToken(message.guild.id);
-    let token = trivia.apiTokens.get(message.guild.id);
 
-    let apicall = `https://opentdb.com/api.php?amount=1&token=${token}`;
-    let repeatIdx = 0;
-    let repeatCount = 0;
+    let repeatCount = 1;
+    let category;
     //parse args
     for (i = 0; i < args.length; i++) {
         //list categories
@@ -73,9 +69,9 @@ async function Trivia(message, args) {
             trivia.categories.forEach(c => (retString += `\n${c.name}, ID: ${c.id}`));
             return message.channel.send(retString);
         } else if (args[i] == '-c') { //check for specified category
-            if (i >= args.length - 1) return message.channel.send('You need to specifiy a category id after the -c argument, list the categories and their ids with -categories');
+            if (i >= args.length - 1) return message.channel.send('You need to specifiy a category id after the -c argument, list the categories and their ids with -categories.');
             let id = Number(args[i + 1]);
-            if (id === NaN) return message.channel.send(`${id} is not a number, and therefore an invalid category`);
+            if (id === NaN) return message.channel.send(`${id} is not a number, and therefore an invalid category.`);
             let validId = false;
             for (j = 0; j < trivia.categories.length; j++) {
                 if (trivia.categories[j].id == id) {
@@ -84,10 +80,9 @@ async function Trivia(message, args) {
                 }
             }
             //if not valid, return an error response, if valid carry on with parsing
-            if (!validId) return message.channel.send(`${id} is not a valid category id number, double check categories with -categories`);
-            apicall += `&category=${id}`;
+            if (!validId) return message.channel.send(`${id} is not a valid category id number, double check categories with -categories.`);
+            category = id;
         } else if (args[i] == '-score') { //check for listing scores
-            let retString = `\`\`\`${message.guild.name} Trivia Scores:`;
             //pull trivia players from guild_members table
             let sql = `SELECT user_id id FROM guild_members WHERE guild_id = ${message.guild.id}`;
             database.all(sql, async (row) => {
@@ -96,7 +91,7 @@ async function Trivia(message, args) {
                 if (!row) return message.channel.send(`Nobody on this server has played trivia.`);
                 //wait for each user to be fetched from users
                 await Promise.all(row.map(async (r) => {
-                    let entry = await database.getPromise(`SELECT user_id id, name n, score s FROM users WHERE user_id = ${r.id}`, async (userEntry) => {
+                    let entry = await database.getPromise(`SELECT TOP 10 user_id id, name n, score s FROM users WHERE user_id = ${r.id}`, async (userEntry) => {
                         if (!userEntry) return;
                         return userEntry;
                     });
@@ -104,12 +99,25 @@ async function Trivia(message, args) {
                     table.push(entry);
                 }));
                 //we have all users, time to sort then form and send a response
-                table = table.sort((a,b) => (b.s - a.s));
-                table.forEach(e => retString += `\n${unescape(e.n)}: ${e.s}`);
-                return message.channel.send(retString + '\`\`\`');
+                let embed = new Discord.MessageEmbed()
+                    .setTitle(`${message.guild.name} Trivia Scores`)
+                    .setColor('#0099ff')
+                let field = {name: `Top ${table.length} Player${table.length > 1 ? 's' : ''}:`, value: ``};
+                table = table.sort((a, b) => (b.s - a.s));
+                table.forEach(e => field.value += `${unescape(e.n)}: ${e.s}\n`);
+                embed.fields.push(field);
+                return message.channel.send(embed);
             });
             //exit function, response will come once sql queries are complete
             return;
+        } else if (args[i] == '-myscore') { //check for listing scores
+            let entry = await database.getPromise(`SELECT user_id id, name n, score s FROM users WHERE user_id = ${message.member.id}`, async (userEntry) => {
+                if (!userEntry) return;
+                return userEntry;
+            });
+            if (!entry)
+                return message.send(`<@${message.member.id}>'s score is: ${entry.s}`)
+            return message.channel.send(`<@${message.member.id}>'s score is: ${entry.s}`);
         } else if (args[i] == '-reset') { //check for token refresh
             await RefreshTriviaToken(message.guild.id);
         } else if (args[i] == '-h' || args[i] == '-help') { //depreciated, users should always use !help for any command help
@@ -118,11 +126,22 @@ async function Trivia(message, args) {
             //store number of repeats remaining
             let n = Number(args[i+1]);
             if (n === NaN)
-                return message.channel.send('Invalid repeat count.');
+                return message.channel.send('Repeat count is not a number.');
+            else if (n > 50 || n < 1) 
+                return message.channel.send(`Repeat count must be between 1 and 50 (inclusive).`);
             repeatCount = Number(args[i+1]);
-            repeatIdx = i+1;
         }
     }
+    //fetch a trivia token if this guild dosn't have one
+    if (!trivia.apiTokens.has(message.guild.id))
+        await GenerateNewTriviaToken(message.guild.id);
+    let token = trivia.apiTokens.get(message.guild.id);
+    let apicall = `https://opentdb.com/api.php?token=${token}`;
+    //add args to the apicall
+    if (repeatCount > 1) apicall += `&amount=${repeatCount}`;
+    else apicall += `&amount=1`;
+    if (category) apicall += `&category=${category}`;
+
     //fetch the trivia question
     https.get(apicall, async (resp) => {
         let data = '';
@@ -130,8 +149,7 @@ async function Trivia(message, args) {
             data += chunk;
         });
         resp.on('end', async() => {
-            //decode the html entities out
-            let question = JSON.parse(DecodeAmpersandHTML(data));
+            let question = JSON.parse(data);
             //handle response codes
             if (question.response_code == 2) message.channel.send(`Trivia API Error: ${apicall} returned invalid parameter`)
             else if (question.response_code == 4) {
@@ -142,92 +160,106 @@ async function Trivia(message, args) {
                 return Trivia(message, args);
             }
             //fetch the first (only) question
-            question = question.results[0];
-            let questionReward = TriviaDifficultyToScore(question.difficulty);
-            
-            let correct_answer;
-            let formattedResponse = '';
-            let answerEmotes;
-            if (question.type == 'multiple') {
-                //form and randomize awnser array order
-                let answerIdx = 0;
-                let answers = [];
-                answerEmotes = [`🇦`, `🇧`, `🇨`, `🇩`]
-                answers = question.incorrect_answers.sort(() => Math.random() - 0.5);
-                answerIdx = Math.floor(Math.random() * answers.length);
-                answers.splice(answerIdx, 0, question.correct_answer);
-                //if on repeating mode, give feedback
-                if (repeatCount > 0) formattedResponse += `Questions remaing in repeat: ${repeatCount}`;
-                //build the response
-                formattedResponse += `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
-                for (i = 0; i < answers.length; i++)
-                    formattedResponse += `\n${answerEmotes[i]} - ${answers[i]}`
-                correct_answer = answerEmotes[answerIdx];
-            } else {
-                //form the response
-                formattedResponse = `\`\`\`Category: ${question.category}\nDifficulty: ${question.difficulty}\`\`\`\n**${question.question}**\n`
-                correct_answer = question.correct_answer === 'True' ? '✅' : '❎';
-                answerEmotes = [`✅`, `❎`];
+            let numQuestions = question.results.length;
+            let i = 0;
+            while (i < question.results.length) {
+                await RunTriviaQuestion(question.results[i], message, numQuestions > 1 ? `Question ${i+1}/${numQuestions}` : ``);
+                i++;
             }
-            //send the response
-            message.channel.send(formattedResponse).then(m => {
-                //add the reacts
-                answerEmotes.forEach(e => m.react(e));
-
-                const filter = (reaction, user) => (/*reaction.emoji.name == correct_answer && !user.bot*/true);
-                //fetch reacts after the timeout has expired
-                m.awaitReactions(filter, { time: trivia.timeout }).then(collected => {
-                    let correct_users = '';
-                    let disqual_users = '';
-                    //fetch all correct users
-                    let finalWinners = collected.get(correct_answer).users;
-                    //check for disqualified users (submitted more than 1 answer)
-                    let disqualified = [];
-                    for (i = 0; i < answerEmotes.length; i++) {
-                        //skip checking correct answer
-                        if (answerEmotes[i] == correct_answer) continue;
-                        //check on each user that were and still are correct
-                        finalWinners = finalWinners.filter(u => {
-                            //pull the user from this incorrect answer's reacts
-                            let vs = collected.get(answerEmotes[i]).users.get(u.id);
-                            //confirm this is still a valid user
-                            let a = finalWinners.get(u.id);
-                            //check if user reacted to incorrect answer && user is valid && user is not a bot
-                            if (vs && a && a.bot == false)
-                                //add user to disqualified array if they are not already in it
-                                if (!disqualified.includes(vs.username))
-                                    disqualified.push(vs.username);
-                            //return filter, remove this user from the finalWinners if they are disqualified
-                            return !(vs && a);
-                        });
-                    }
-                    //build response string
-                    finalWinners.forEach(user => correct_users += ` ${user.username},`);
-                    disqualified.forEach(u => disqual_users += ` ${u},`);
-                    ModTriviaScores(finalWinners, questionReward, message.guild);
-                    
-                    //remove trailing commas
-                    correct_users = correct_users.slice(0, -1);
-                    disqual_users = disqual_users.slice(0, -1);
-                    //build final response
-                    let retString = `Answer: ${correct_answer}`;
-                    if (disqualified.length > 0) retString += `\nDisqualified: ${disqual_users}`;
-                    //send final response, if in repeat mode, also re-call this function
-                    if (repeatCount > 0) {
-                        m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
-                        args[repeatIdx] = repeatCount - 1;
-                        return Trivia(message, args);
-                    }
-                    else
-                        return m.channel.send(retString + (correct_users == '' ? `\nYou all suck.` : `\nCongrats:` + correct_users));
-                });
-            });
         });
     }).on("error", (err) => {
         return message.channel.send("Trivia API Error: " + err.message);
     });
 }
 exports.Trivia = Trivia;
+
+async function RunTriviaQuestion(question, message, footer) {
+    return new Promise(resolve => {
+        let embed = new Discord.MessageEmbed()
+            .setTitle(DecodeAmpersandHTML(question.question))
+            .setColor('#0099ff')
+            .setDescription(`Category: ${question.category}\nDifficulty: ${question.difficulty}`)
+            .setFooter(footer);
+
+        let questionReward = TriviaDifficultyToScore(question.difficulty);
+        let correct_answer;
+        let answerEmotes;
+        if (question.type == 'multiple') {
+            //form and randomize awnser array order
+            let answers = [];
+            answerEmotes = [`🇦`, `🇧`, `🇨`, `🇩`]
+            answers = question.incorrect_answers.sort(() => Math.random() - 0.5);
+            let answerIdx = Math.floor(Math.random() * answers.length);
+            answers.splice(answerIdx, 0, question.correct_answer);
+            correct_answer = answerEmotes[answerIdx];
+
+            //decode html entities from answers
+            let answerString = `${answerEmotes[0]} - ${DecodeAmpersandHTML(answers[0])}\n`;
+            answerString += `${answerEmotes[1]} - ${DecodeAmpersandHTML(answers[1])}\n`;
+            answerString += `${answerEmotes[2]} - ${DecodeAmpersandHTML(answers[2])}\n`;
+            answerString += `${answerEmotes[3]} - ${DecodeAmpersandHTML(answers[3])}\n`;
+
+            embed.fields.push({ name: `Possible Answers:`, value: answerString});
+        } else { //true/false question
+            answerEmotes = [`✅`, `❎`];
+            correct_answer = question.correct_answer === 'True' ? '✅' : '❎';
+            embed.fields.push({ name: `Possible Answers:`, value: `✅ - True\n❎ - False`});
+        }
+
+        //send the question
+        let embedMessage = message.channel.send(embed)
+        embedMessage.then(m => {
+            //add the reacts
+            answerEmotes.forEach(e => m.react(e));
+
+            //fetch reacts after the timeout has expired
+            const filter = (reaction, user) => (/*reaction.emoji.name == correct_answer && !user.bot*/true);
+            m.awaitReactions(filter, { time: trivia.timeout }).then(collected => {
+                let correct_users = '';
+                let disqual_users = '';
+                //fetch all correct users
+                let finalWinners = collected.get(correct_answer).users;
+                //check for disqualified users (submitted more than 1 answer)
+                let disqualified = [];
+                for (i = 0; i < answerEmotes.length; i++) {
+                    //skip checking correct answer
+                    if (answerEmotes[i] == correct_answer) continue;
+                    //check on each user that were and still are correct
+                    finalWinners = finalWinners.filter(u => {
+                        //pull the user from this incorrect answer's reacts
+                        let vs = collected.get(answerEmotes[i]).users.get(u.id);
+                        //confirm this is still a valid user
+                        let a = finalWinners.get(u.id);
+                        //check if user reacted to incorrect answer && user is valid && user is not a bot
+                        if (vs && a && a.bot == false)
+                            //add user to disqualified array if they are not already in it
+                            if (!disqualified.includes(vs.username))
+                                disqualified.push(vs.username);
+                        //return filter, remove this user from the finalWinners if they are disqualified
+                        return !(vs && a);
+                    });
+                }
+                //build response string
+                finalWinners.forEach(user => correct_users += ` ${user.username},`);
+                disqualified.forEach(u => disqual_users += ` ${u},`);
+                //update scores
+                ModTriviaScores(finalWinners, questionReward, message.guild);
+                //remove trailing commas
+                correct_users = correct_users.slice(0, -1);
+                disqual_users = disqual_users.slice(0, -1);
+                //add to embed for final response
+                embed.fields.push({name: 'Answer', value: `${correct_answer} - ${question.correct_answer}`});
+                embed.fields.push({name: 'Correct Players', value: `${correct_users == '' ? `Nobody` : correct_users}`});
+                embed.setColor('#93c47d');
+                if (disqualified.length > 0)
+                    embed.fields.push({name: 'Disqualified Players', value: disqual_users});
+
+                m.edit(embed);
+                resolve();
+            });
+        });
+    });
+}
 
 async function ModTriviaScores(users, value, guild) {
     //check for user exists in guild members
@@ -306,9 +338,10 @@ function AddHelpPages() {
         description: `Module: Trivia`,
         fields: [
             {name: '!trivia', value: 'Play a trivia from a random category.', inline: true},
-            {name: '!trivia -c [number]', value: 'Play a trivia from the given category.', inline: true},
             {name: '!trivia -categories', value: 'List all available categories.', inline: true},
             {name: '!trivia -score', value: 'Display this servers trivia leaderboards.', inline: true},
+            {name: '!trivia -myscore', value: 'Display your score.', inline: true},
+            {name: '!trivia -c [number]', value: 'Play a trivia from the given category.', inline: true},
             {name: '!trivia -r [number]', value: 'Repeats the category number times.', inline: true},
         ]
     };
