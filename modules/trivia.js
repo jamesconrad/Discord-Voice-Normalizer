@@ -91,7 +91,7 @@ async function Trivia(message, args) {
                 if (!row) return message.channel.send(`Nobody on this server has played trivia.`);
                 //wait for each user to be fetched from users
                 await Promise.all(row.map(async (r) => {
-                    let entry = await database.getPromise(`SELECT TOP 10 user_id id, name n, score s FROM users WHERE user_id = ${r.id}`, async (userEntry) => {
+                    let entry = await database.getPromise(`SELECT user_id id, name n, score s FROM users WHERE user_id = ${r.id}`, async (userEntry) => {
                         if (!userEntry) return;
                         return userEntry;
                     });
