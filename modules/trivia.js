@@ -248,7 +248,7 @@ async function RunTriviaQuestion(question, message, footer) {
                 correct_users = correct_users.slice(0, -1);
                 disqual_users = disqual_users.slice(0, -1);
                 //add to embed for final response
-                embed.fields.push({name: 'Answer', value: `${correct_answer} - ${question.correct_answer}`});
+                embed.fields.push({name: 'Answer', value: `${correct_answer} - ${DecodeAmpersandHTML(question.correct_answer)}`});
                 embed.fields.push({name: 'Correct Players', value: `${correct_users == '' ? `Nobody` : correct_users}`});
                 embed.setColor('#93c47d');
                 if (disqualified.length > 0)
