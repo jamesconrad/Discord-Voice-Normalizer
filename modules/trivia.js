@@ -61,6 +61,7 @@ async function Trivia(message, args) {
 
     let repeatCount = 1;
     let category;
+    let difficulty;
     //parse args
     for (i = 0; i < args.length; i++) {
         //list categories
@@ -130,6 +131,10 @@ async function Trivia(message, args) {
             else if (n > 50 || n < 1) 
                 return message.channel.send(`Repeat count must be between 1 and 50 (inclusive).`);
             repeatCount = Number(args[i+1]);
+        } else if (args[i] == '-d' && args.length > i + 1) {
+            let d = args[i+1].toLowerCase();
+            if (d == 'easy' || d == 'medium' || d == 'hard')
+                difficulty = args[i+1];
         }
     }
     //fetch a trivia token if this guild dosn't have one
@@ -141,6 +146,7 @@ async function Trivia(message, args) {
     if (repeatCount > 1) apicall += `&amount=${repeatCount}`;
     else apicall += `&amount=1`;
     if (category) apicall += `&category=${category}`;
+    if (difficulty) apicall += `&difficulty=${difficulty}`;
 
     //fetch the trivia question
     https.get(apicall, async (resp) => {
@@ -343,6 +349,7 @@ function AddHelpPages() {
             {name: '!trivia -myscore', value: 'Display your score.', inline: true},
             {name: '!trivia -c [number]', value: 'Play a trivia from the given category.', inline: true},
             {name: '!trivia -r [number]', value: 'Repeats the category number times.', inline: true},
+            {name: '!trivia -d [easy,medium,hard]', value: 'Forces a specific question difficulty.', inline: false},
         ]
     };
     help.AddPage('trivia', page);
