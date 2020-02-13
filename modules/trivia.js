@@ -135,6 +135,8 @@ async function Trivia(message, args) {
             let d = args[i+1].toLowerCase();
             if (d == 'easy' || d == 'medium' || d == 'hard')
                 difficulty = d;
+            else
+                return message.channel.send(`${d} is not a valid difficulty. Must be easy, medium, or hard.`);
         }
     }
     //fetch a trivia token if this guild dosn't have one
