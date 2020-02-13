@@ -134,7 +134,7 @@ async function Trivia(message, args) {
         } else if (args[i] == '-d' && args.length > i + 1) {
             let d = args[i+1].toLowerCase();
             if (d == 'easy' || d == 'medium' || d == 'hard')
-                difficulty = args[i+1];
+                difficulty = d;
         }
     }
     //fetch a trivia token if this guild dosn't have one
