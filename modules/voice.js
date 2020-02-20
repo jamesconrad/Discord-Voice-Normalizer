@@ -72,7 +72,7 @@ async function userLeftVoice(voiceState) {
 
         //check if we are last, and leave
         if (guildNormal.userStats.size == 1)
-            leaveChannel(guildNormal);
+            autoleaveChannel(guildNormal);
     }
 }
 exports.userLeftVoice = userLeftVoice;
@@ -154,6 +154,12 @@ async function joinChannel(message, args) {
     }
 }
 exports.joinChannel = joinChannel;
+
+async function autoleaveChannel(guildNormal) {
+    guildNormals.delete(guildNormal.connection.channel.id);
+    console.log(`Leaving voice channel: ${guildNormal.connection.channel.guild.name} -> ${guildNormal.connection.channel.name}\n\tCurrently in ${guildNormals.size} channels.`);
+    guildNormal.connection.channel.leave();
+}
 
 async function leaveChannel(message, args) {
     let guildNormal;

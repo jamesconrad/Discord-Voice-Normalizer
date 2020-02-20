@@ -9,7 +9,6 @@ const emoteModule = require('./modules/emoteImporter');
 const updateModule = require('./modules/autoupdate');
 const database = require('./modules/database');
 const command = require('./modules/command');
-
 //conncet to discord
 console.log('Attempting Discord connection...');
 client.login(config.token);
@@ -17,8 +16,8 @@ client.login(config.token);
 //once connected, display some general stats
 client.once('ready', async () => {
     let numUsers = 0;
-    client.guilds.forEach(g => numUsers += g.memberCount);
-    console.log(`Ready! Connected to ${client.guilds.size} server(s), containing ${numUsers} users in total.`);
+    client.guilds.cache.forEach(g => numUsers += g.memberCount);
+    console.log(`Ready! Connected to ${client.guilds.cache.size} server(s), containing ${numUsers} users in total.`);
     //set bots "playing" status to be the help command
     client.user.setPresence({activity: {name: `${config.prefix}help`}, status: 'online'});
 
@@ -33,7 +32,7 @@ client.once('ready', async () => {
     updateModule.Initialize(client);
 
     //update db
-    client.guilds.forEach(g => database.UpdateGuild(g));
+    client.guilds.cache.forEach(g => database.UpdateGuild(g));
 });
 //inform disconnect, and reconnects
 client.once('reconnecting', () => {

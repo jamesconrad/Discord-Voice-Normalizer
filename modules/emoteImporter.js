@@ -25,7 +25,7 @@ exports.Initialize = Initialize;
 async function ImportEmote(message, args) {
     //verify permissions
     if (!message.member.hasPermission('MANAGE_EMOJIS')) return message.channel.send(`You need permission for managing emoji's to use this command.`);
-    if (!message.guild.members.get(config.botUID).hasPermission('MANAGE_EMOJIS')) return message.channel.send(`I need permission for managing emoji's to continue.`);
+    if (!message.guild.members.cache.get(config.botUID).hasPermission('MANAGE_EMOJIS')) return message.channel.send(`I need permission for managing emoji's to continue.`);
     //verify args
     if (args.length <= 0) return message.channel.send("You didn't specify any emojis to add.");
     //set the activity flag for the activity monitor
@@ -78,7 +78,7 @@ async function AttemptEmoteImports(message, args) {
             //for each emote to add
             args.forEach(async emote => {
                 //check if an emote using its name already exists
-                let found = message.guild.emojis.find(emoji => emoji.name === emote);
+                let found = message.guild.emojis.cache.find(emoji => emoji.name === emote);
                 //if found add this emote to the results
                 if (found) {
                     results.existing.push(found);
@@ -116,7 +116,7 @@ async function AttemptEmoteImports(message, args) {
                             //apicall used the emote id
                             else if (r.emote !== undefined) {
                                 //check if the fetched emote id has an emote using its name, and add to results
-                                let found = message.guild.emojis.find(emoji => emoji.name === r.emote.name);
+                                let found = message.guild.emojis.cache.find(emoji => emoji.name === r.emote.name);
                                 if (found) results.existing.push(found);
                                 else results.added.push(await AddEmote(r.emote, message.guild));
                             }

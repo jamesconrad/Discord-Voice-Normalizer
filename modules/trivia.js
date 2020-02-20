@@ -226,7 +226,7 @@ async function RunTriviaQuestion(question, message, footer) {
                 let correct_users = '';
                 let disqual_users = '';
                 //fetch all correct users
-                let finalWinners = collected.get(correct_answer).users;
+                let finalWinners = collected.get(correct_answer).users.cache;
                 //check for disqualified users (submitted more than 1 answer)
                 let disqualified = [];
                 for (i = 0; i < answerEmotes.length; i++) {
@@ -235,7 +235,7 @@ async function RunTriviaQuestion(question, message, footer) {
                     //check on each user that were and still are correct
                     finalWinners = finalWinners.filter(u => {
                         //pull the user from this incorrect answer's reacts
-                        let vs = collected.get(answerEmotes[i]).users.get(u.id);
+                        let vs = collected.get(answerEmotes[i]).users.cache.get(u.id);
                         //confirm this is still a valid user
                         let a = finalWinners.get(u.id);
                         //check if user reacted to incorrect answer && user is valid && user is not a bot
