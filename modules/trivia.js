@@ -294,8 +294,8 @@ exports.ModTriviaScores = ModTriviaScores;
 
 function TriviaDifficultyToScore(difficulty) {
     if (difficulty === 'easy') return 1;
-    else if (difficulty === 'medium') return 3;
-    else if (difficulty === 'hard') return 5;
+    else if (difficulty === 'medium') return 2;
+    else if (difficulty === 'hard') return 3;
     else return 0;
 }
 exports.TriviaDifficultyToScore = TriviaDifficultyToScore;
