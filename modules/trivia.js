@@ -173,6 +173,7 @@ async function Trivia(message, args) {
             while (i < question.results.length) {
                 await RunTriviaQuestion(question.results[i], message, numQuestions > 1 ? `Question ${i+1}/${numQuestions}` : ``);
                 i++;
+                await timeout(config.triviaRepeatDelay);
             }
         });
     }).on("error", (err) => {
@@ -180,6 +181,10 @@ async function Trivia(message, args) {
     });
 }
 exports.Trivia = Trivia;
+
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve,ms))
+}
 
 async function RunTriviaQuestion(question, message, footer) {
     return new Promise(resolve => {
