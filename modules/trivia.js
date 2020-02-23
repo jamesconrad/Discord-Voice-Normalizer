@@ -257,6 +257,9 @@ async function RunTriviaQuestion(question, message, footer) {
                 disqualified.forEach(u => disqual_users += ` ${u},`);
                 //update scores
                 ModTriviaScores(finalWinners, questionReward, message.guild);
+                //bonus of +1 for being first to answer, only if more than one got it right
+                if (finalWinners.length > 1)
+                    ModTriviaScores(finalWinners[0], 1, message.guild);
                 //remove trailing commas
                 correct_users = correct_users.slice(0, -1);
                 disqual_users = disqual_users.slice(0, -1);
