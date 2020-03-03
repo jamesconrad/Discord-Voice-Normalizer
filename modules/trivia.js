@@ -5,6 +5,7 @@ const validator = require('validator');
 const activity = require('../modules/activity');
 const database = require('../modules/database');
 const command = require('../modules/command');
+const fs = require('fs');
 
 const config = require('../config.json');
 
@@ -51,6 +52,7 @@ async function Initialize() {
         alphaIndex[alpha] = String.fromCharCode(code);
         i++;
     }
+    MonthlyScoreResetLoop()
     console.log('Trivia Initialized.');
 }
 exports.Initialize = Initialize;
@@ -92,7 +94,7 @@ async function Trivia(message, args) {
                 if (!row) return message.channel.send(`Nobody on this server has played trivia.`);
                 //wait for each user to be fetched from users
                 await Promise.all(row.map(async (r) => {
-                    let entry = await database.getPromise(`SELECT user_id id, name n, score s FROM users WHERE user_id = ${r.id}`, async (userEntry) => {
+                    let entry = await database.getPromise(`SELECT user_id id, name n, score s, monthlyScore ms FROM users WHERE user_id = ${r.id}`, async (userEntry) => {
                         if (!userEntry) return;
                         return userEntry;
                     });
@@ -103,10 +105,17 @@ async function Trivia(message, args) {
                 let embed = new Discord.MessageEmbed()
                     .setTitle(`${message.guild.name} Trivia Scores`)
                     .setColor('#0099ff')
-                let field = {name: `Top ${table.length} Player${table.length > 1 ? 's' : ''}:`, value: ``};
+                //alltime score
+                let sfield = {name: `All Time Top Player${table.length > 1 ? 's' : ''}:`, value: ``, inline: true};
                 table = table.sort((a, b) => (b.s - a.s));
-                table.forEach(e => field.value += `${unescape(e.n)}: ${e.s}\n`);
-                embed.fields.push(field);
+                table.forEach(e => sfield.value += `${unescape(e.n)}: ${e.s}\n`);
+                embed.fields.push(sfield);
+                //monthly score
+                table = table.sort((a, b) => (b.ms - a.ms)).filter(a => a.ms > 0);
+                let msfield = {name: `Monthly Top Player${table.length > 1 ? 's' : ''}:`, value: ``, inline: true};
+                table.forEach(e => msfield.value += `${unescape(e.n)}: ${e.ms}\n`);
+                if (table.length > 0) embed.fields.push(msfield);
+                //send scores
                 return message.channel.send(embed);
             });
             //exit function, response will come once sql queries are complete
@@ -286,9 +295,9 @@ async function ModTriviaScores(users, value, guild) {
     });
     //update or insert users state
     users.forEach(u => {
-        database.get(`SELECT score s FROM users WHERE user_id = ${u.id}`, (row) => {
-            if (row) database.run(`UPDATE users SET name = \'${escape(u.username)}\', score = ${row.s + value} WHERE user_id = ${u.id}`);
-            else database.run(`INSERT INTO users (user_id, name, score) VALUES (${u.id}, \'${escape(u.username)}\', ${value})`);
+        database.get(`SELECT score s, monthlyScore ms FROM users WHERE user_id = ${u.id}`, (row) => {
+            if (row) database.run(`UPDATE users SET name = \'${escape(u.username)}\', score = ${row.s + value}, monthlyScore = ${row.ms + value} WHERE user_id = ${u.id}`);
+            else database.run(`INSERT INTO users (user_id, name, score, monthlyScore) VALUES (${u.id}, \'${escape(u.username)}\', ${value}, ${value})`);
         });
     })
     database.run(`UPDATE guilds SET total_score = total_score + ${users.size * value} WHERE guild_id = ${guild.id}`);
@@ -342,6 +351,22 @@ function GenerateNewTriviaToken(guildId) {
     });
 }
 exports.GenerateNewTriviaToken = GenerateNewTriviaToken;
+
+function MonthlyScoreResetLoop() {
+    //check if its a new month
+    let now = new Date();
+    let month = now.getMonth();
+    if (month != config.month) {
+        console.log(`Updating trivia month to id: ${month}`);
+        //save new month to config
+        config.month = month;
+        fs.writeFileSync('./config.json', JSON.stringify(config, null, 4));
+        //set all monthly scores to 0
+        database.run('UPDATE users SET monthlyScore = 0;');
+    }
+    //call this function again after 12hrs
+    setTimeout(MonthlyScoreResetLoop, 1000 * 60 * 60 * 12);
+}
 
 //returns time since last global trivia call in ms
 function IsActive() {
