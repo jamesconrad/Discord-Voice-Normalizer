@@ -83,14 +83,22 @@ async function getPromise(command, callback) {
 exports.getPromise = getPromise
 
 function CreateGuild(guild) {
-    let sql = `INSERT INTO guilds (guild_id, name, total_score, prefix, disabled_modules) VALUES (${guild.id}, \'${escape(guild.name)}\', 0, \'!\', 0);`;
-    run(sql, () => {});
+    let sql = `INSERT INTO guilds (guild_id, name, total_score, prefix, disabled_modules) VALUES (${guild.id}, \'${guild.name}\', 0, \'!\', 0);`;
+    let cfg = {
+        name: guild.name,
+        guild_id: guild.id,
+        total_score: 0,
+        prefix: '!',
+        disabled_modules: 0
+    };
+    guildCache.set(cfg.guild_id, cfg);
+    run(sql);
 }
 exports.CreateGuild = CreateGuild;
 
 function RemoveGuild(guild) {
     let sql = `DELETE FROM guilds WHERE guild_id = ${guild.id};`;
-    run(sql, () => {});
+    run(sql);
 }
 exports.RemoveGuild = RemoveGuild;
 
