@@ -8,13 +8,24 @@ let guildCache = new Map();
 async function Initialize() {
     return new Promise(async resolve => {
         primarydb = await new sqlite.Database('./' + config.dbfile, sqlite.OPEN_READWRITE, async (err) => {
-            if (err) console.log(err.message);
-            else {
-                await BuildGuildCache();
-                console.log('Database Initialized.')
-                resolve();                
+            if (err) {
+                if (err.errno == 14) {
+                    //db was not found, generate a new one instead.
+                    console.log(`PrimaryDB not found, attempting creation of new one.`)
+                    await GeneratePrimaryDatabase();
+                    resolve();
+                }
+                //error is fatal
+                else {
+                    console.log(err.message);
+                    process.exit(1);
+                }
             }
         });
+        //db loaded or created, continue with setup
+        await BuildGuildCache();
+        console.log('Database Initialized.')
+        resolve();  
     });
 }
 exports.Initialize = Initialize;
@@ -83,7 +94,7 @@ async function getPromise(command, callback) {
 exports.getPromise = getPromise
 
 function CreateGuild(guild) {
-    let sql = `INSERT INTO guilds (guild_id, name, total_score, prefix, disabled_modules) VALUES (${guild.id}, \'${guild.name}\', 0, \'!\', 0);`;
+    let sql = `INSERT INTO guilds (guild_id, name, total_score, prefix, disabled_modules) VALUES (${guild.id}, \'${escape(guild.name)}\', 0, \'!\', 0);`;
     let cfg = {
         name: guild.name,
         guild_id: guild.id,
@@ -140,3 +151,49 @@ function UpdateGuildConfig(config) {
     run(`UPDATE guilds SET name = \'${escape(config.name)}\', total_score = ${config.total_score}, prefix = \'${escape(config.prefix)}\', disabled_modules = ${config.disabled_modules} WHERE guild_id = ${config.guild_id}`)
 }
 exports.UpdateGuildConfig = UpdateGuildConfig;
+
+async function GeneratePrimaryDatabase() {
+    return new Promise(async resolve => {
+        primarydb = await new sqlite.Database('./db/primary.db', sqlite.OPEN_CREATE | sqlite.OPEN_READWRITE, (err) => {
+            if (err) return console.log(err.message);
+        });
+
+        let sqlcreatecommand = `CREATE TABLE guilds (
+        guild_id TEXT PRIMARY KEY,
+        name TEXT,
+        total_score INT,
+        prefix TEXT,
+        disabled_modules INT
+        );`;
+
+        console.log(`Generating guilds table...`);
+        await runPromise(sqlcreatecommand);
+
+        sqlcreatecommand = `CREATE TABLE guild_members (
+        guild_id TEXT,
+        user_id TEXT,
+        FOREIGN KEY (guild_id) REFERENCES guilds(guild_id)
+        );`;
+
+        console.log(`Generating guild_members table...`);
+        await runPromise(sqlcreatecommand);
+
+        sqlcreatecommand = `CREATE TABLE users (
+        user_id TEXT PRIMARY KEY,
+        name TEXT,
+        score INT,
+        monthlyScore INT,
+        FOREIGN KEY (user_id) REFERENCES guild_members(user_id)
+        );`;
+
+        console.log(`Generating users table...`);
+        await runPromise(sqlcreatecommand);
+
+        //10s timeout to ensure db setup is complete
+        console.log(`Waiting 10s to proceed...`)
+        setTimeout(() => {
+            console.log(`PrimaryDB generation complete.`)
+            resolve()
+        }, 10000);
+    });
+}
