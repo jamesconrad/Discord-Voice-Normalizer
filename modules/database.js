@@ -154,7 +154,7 @@ exports.UpdateGuildConfig = UpdateGuildConfig;
 
 async function GeneratePrimaryDatabase() {
     return new Promise(async resolve => {
-        primarydb = await new sqlite.Database('./db/primary.db', sqlite.OPEN_CREATE | sqlite.OPEN_READWRITE, (err) => {
+        primarydb = await new sqlite.Database('./' + config.dbfile, sqlite.OPEN_CREATE | sqlite.OPEN_READWRITE, (err) => {
             if (err) return console.log(err.message);
         });
 
