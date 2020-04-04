@@ -7,5 +7,6 @@
     "triviaTimeout": 15000,
     "triviaRepeatDelay": 3000,
     "month": 3,
-    "node_id": "MDY6Q29tbWl0MjIxOTcyMDM0OmIyNjE2OWZhOTY1NzJlZjJmZDk4MDlhMmQ0NGMzOTQ2ODM5YTNjNGE="
+    "node_id": "MDY6Q29tbWl0MjIxOTcyMDM0OmIyNjE2OWZhOTY1NzJlZjJmZDk4MDlhMmQ0NGMzOTQ2ODM5YTNjNGE=",
+    "auto_update": false
 }

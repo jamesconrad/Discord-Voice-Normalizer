@@ -33,6 +33,7 @@ async function CheckForUpdate() {
             //compare current node_id to the one we just fetched, if the same then just exit the function
             if (response.commit.node_id == config.node_id) return;
             console.log(`Update detected, ${response.commit.node_id}`);
+            if (config.auto_update == false) return console.log(`Update not applied. Check config.json's auto_update to enable updates.`);
 
             //update config's node id
             config.node_id = response.commit.node_id;
