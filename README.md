@@ -4,6 +4,10 @@ Discord bot to normalize peoples voice in a channel.
 ## Adding the bot to your server:
 https://discordapp.com/oauth2/authorize?client_id=644968401969741838&scope=bot&permissions=3148800
 
+## Hosting your own version:
+Make sure to rename sample_config.json to config.json and edit token to be your bot's token.
+To enable auto-updates to the script, change auto_update in config.json to true, and run the script via bot.sh
+
 ## Using the bot:
 Have the bot join the voice channel you are in using !joinvoice, once inside it will begin listening and calculating each persons average sound levels. Once each person has talked at least once, !normalize will have the bot respond with the volume settings for each user to make them normalized. Please note due to user volume being client sided, the bot cannot change these for you.
 
