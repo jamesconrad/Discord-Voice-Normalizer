@@ -91,7 +91,7 @@ async function Trivia(message, args) {
             database.all(sql, async (row) => {
                 let table = [];
                 //no row means user no players in the guild
-                if (!row) return message.channel.send(`Nobody on this server has played trivia.`);
+                if (row.length == 0) return message.channel.send(`Nobody on this server has played trivia.`);
                 //wait for each user to be fetched from users
                 await Promise.all(row.map(async (r) => {
                     let entry = await database.getPromise(`SELECT user_id id, name n, score s, monthlyScore ms FROM users WHERE user_id = ${r.id}`, async (userEntry) => {
