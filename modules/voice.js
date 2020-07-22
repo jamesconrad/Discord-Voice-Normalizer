@@ -136,6 +136,7 @@ async function joinChannel(message, args) {
 
         //add listener events for user speech
         connection.on('speaking', (user, speaking) => {
+            if(!user) console.log(`ERROR: user is undefined, ${user} -> ${speaking.bitfield}`);
             //speaking started
             if (speaking.bitfield == 1) {
                 BeginRecording(guildNormals.get(connection.channel.id), user);
@@ -234,7 +235,7 @@ async function Normalize(message, args) {
     if (guildNormals.has(message.member.voice.channelID)) {
         guildNormal = guildNormals.get(message.member.voice.channel.id);
     } else {
-        return message.channel.send('I need to be in your voice channel to calculate norrmals!');
+        return message.channel.send('I need to be in your voice channel to calculate normals!');
     }
 
     let retString = ``;
@@ -253,7 +254,7 @@ async function Normalize(message, args) {
         retString += "\n[number] : any number within 0 - 200 (inclusive)";
         retString += "\n-a or -average : center each user around voice chat average volume";
         retString += "\n-i or -ignore : remove yourself from calculations";
-        retString += `\nExample: ${prefix}n 50 -a : determines user volumes in relation to half room average`;
+        retString += `\nExample: !n 50 -a : determines user volumes in relation to half room average`;
         return message.channel.send(retString)
     }
     args.forEach(a => {
@@ -334,7 +335,7 @@ function DisplayVolume(message, args) {
     if (guildNormals.has(message.member.voice.channelID)) {
         guildNormal = guildNormals.get(message.member.voice.channel.id);
     } else {
-        return message.channel.send('I need to be in your voice channel to display user volumnes!');
+        return message.channel.send('I need to be in your voice channel to display user volumes!');
     }
     let s = 'Listing perceived user volumes:\n';
     guildNormal.userStats.forEach(user => { if (!user.user.bot) s += `${user.user.username} -> ${user.perceivedVolume.toFixed(2)}dB\n` });
