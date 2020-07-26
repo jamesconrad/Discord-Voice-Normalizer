@@ -70,8 +70,13 @@ async function userLeftVoice(voiceState) {
             guildNormal.userStats.delete(member.user.id);
         }
 
-        //check if we are last, and leave
-        if (guildNormal.userStats.size == 1)
+        //count current bots in voice channel
+        let botCount = 0;
+        guildNormal.userStats.forEach(userStat => {
+            if (userStat.user.bot) botCount++;
+        });
+        //if we are alone or in a channel of bots, leave channel
+        if (guildNormal.userStats.size == 1 || botCount == guildNormal.userStats.size)
             autoleaveChannel(guildNormal);
     }
 }
