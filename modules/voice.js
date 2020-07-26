@@ -355,6 +355,15 @@ function IsActive() {
     return guildNormals.size == 0;
 }
 
+function RemoveGuild(guild) {
+    let found;
+    guildNormals.forEach(n => {
+        if (n.voiceChannel.guild.id == guild.id) found == n.voiceChannel.id;
+    });
+    if (found)  guildNormals.delete(found);
+}
+exports.RemoveGuild = RemoveGuild;
+
 function AddHelpPages() {
     let page = {
         description: `Module: Voice`,

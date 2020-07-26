@@ -50,6 +50,7 @@ client.on('guildCreate', guild => {
 client.on('guildDelete', guild => {
     console.log(`Removed from Guild: ${guild.name}`);
     database.RemoveGuild(guild);
+    voiceModule.RemoveGuild(guild);
 });
 
 client.on('message', async message => {
