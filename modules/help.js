@@ -25,7 +25,8 @@ function Initialize() {
         description: `Module: Help\nTo navigate the menu click a react emote at the bottom.`,
         fields: [
             {name: '!help', value: 'Display this menu'},
-            {name: 'Reporting an error/issue', value: 'Simply send a dm to this bot, note the dm will be recorded.\nPlease include any additional information you can, and only send a single message per error.'}
+            {name: 'Reporting an error/issue', value: 'Simply send a dm to this bot, note the dm will be recorded.\nPlease include any additional information you can, and only send a single message per error.'},
+            {name: 'Source', value: 'github.com/jamesconrad/Discord-Voice-Normalizer'}
         ]
     };
     AddPage('help', page);
