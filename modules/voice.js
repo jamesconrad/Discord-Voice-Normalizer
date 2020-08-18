@@ -115,6 +115,7 @@ async function joinChannel(message, args) {
         const connection = await voiceChannel.join();
         const normals = {
             voiceChannel: voiceChannel,
+            guildId: message.guild.id,
             connection: connection,
             userStats: new Map(),
         };
@@ -361,11 +362,12 @@ function IsActive() {
 }
 
 function RemoveGuild(guild) {
-    let found;
-    guildNormals.forEach(n => {
-        if (n.voiceChannel.guild.id == guild.id) found == n.voiceChannel.id;
+    guildNormals.forEach((n, k) => {
+        if (n.guildId == guild.id) {
+            guildNormals.delete(k);
+            console.log(`\tKicked from guild ${guild.name} while in voice channel -> ${n.voiceChannel.name}.\n\tCurrently in ${guildNormals.size} channels.`)
+        }
     });
-    if (found)  guildNormals.delete(found);
 }
 exports.RemoveGuild = RemoveGuild;
 
