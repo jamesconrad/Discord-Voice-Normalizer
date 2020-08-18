@@ -19,7 +19,8 @@ let trivia = {
     categories: [],
     timeout: 0,
     //db: 0,
-    lastUsed: new Date()
+    lastUsed: new Date(),
+    used: false
 };
 
 async function Initialize() {
@@ -60,6 +61,7 @@ exports.Initialize = Initialize;
 async function Trivia(message, args) {
     //store current time for activity checks
     trivia.lastUsed = new Date();
+    used = true;
 
     let repeatCount = 1;
     let category;
@@ -371,7 +373,7 @@ function MonthlyScoreResetLoop() {
 //returns time since last global trivia call in ms
 function IsActive() {
     let now = new Date();
-    return (now - trivia.lastUsed) < 300000;
+    return trivia.used && ((now - trivia.lastUsed) < 300000);
 }
 
 function AddHelpPages() {

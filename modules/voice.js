@@ -358,7 +358,7 @@ function ToDecibels(num) {
 exports.ToDecibels = ToDecibels;
 
 function IsActive() {
-    return guildNormals.size == 0;
+    return guildNormals.size != 0;
 }
 
 function RemoveGuild(guild) {

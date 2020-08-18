@@ -20,7 +20,7 @@ function Initialize() {
     command.RegisterModule("help", c, false, 0);
 
     //open dmg logging file
-    dmLog.pipe(fs.createWriteStream('dmlog.csv', {flags: 'a'}));;
+    dmLog.pipe(fs.createWriteStream('dmlog.csv', {flags: 'a'}));
     let page = {
         description: `Module: Help\nTo navigate the menu click a react emote at the bottom.`,
         fields: [

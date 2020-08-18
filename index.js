@@ -7,6 +7,7 @@ const triviaModule = require('./modules/trivia');
 const voiceModule = require('./modules/voice');
 const emoteModule = require('./modules/emoteImporter');
 const updateModule = require('./modules/autoupdate');
+const activityModule = require('./modules/activity');
 const database = require('./modules/database');
 const command = require('./modules/command');
 //conncet to discord
@@ -31,6 +32,8 @@ client.once('ready', async () => {
     emoteModule.Initialize(client);
     updateModule.Initialize(client);
 
+    //start activity log after 1 minute, ensures other modules have registered with activity module
+    setTimeout(() => {console.log('Attempting to start activity log...'); activityModule.StartActivityLog()}, 1000*60);
     //update db
     client.guilds.cache.forEach(g => database.UpdateGuild(g));
 });

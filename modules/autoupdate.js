@@ -46,6 +46,7 @@ async function CheckForUpdate() {
             //notify countdown at 5mins, 2.5mins, 1min, 30s, 15s
             await RestartCountdown([300000, 150000, 60000, 30000, 15000, 0]);
             //return control to the parent bash script
+            activity.EndActivityLogging();
             console.log('Countdown finished, exiting process.');
             process.exit(0);
         });
