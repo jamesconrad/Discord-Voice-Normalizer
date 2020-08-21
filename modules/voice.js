@@ -39,6 +39,10 @@ exports.Initialize = Initialize;
 
 async function userJoinedVoice(voiceState) {
     let member = voiceState.member;
+    if (member == null) {
+        console.log(`ERROR: member of voiceState was null on user joining voice`);
+        console.log(voiceState);
+    }
     //check if we are tracking their channel
     const guildNormal = guildNormals.get(member.voice.channel.id);
     if (guildNormal) {
@@ -102,7 +106,7 @@ async function joinChannel(message, args) {
     //confirm if channel is joinable
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) return message.channel.send('You need to be in a voice channel for me to join!');
-    const permissions = voiceChannel.permissionsFor(client.user);
+    const permissions = voiceChannel.permissionsFor(message.guild.me);
     if (!permissions.has('CONNECT')){
         return message.channel.send('I need the permissions to join your voice channel!');
     } else if (!permissions.has('SPEAK')) {
