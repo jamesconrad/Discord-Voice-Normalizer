@@ -111,6 +111,8 @@ async function joinChannel(message, args) {
         return message.channel.send('I need the permissions to join your voice channel!');
     } else if (!permissions.has('SPEAK')) {
         return message.channel.send('Due to a restriction imposed by discord API, I need permissions to speak in that channel. Please note I will only be transmitting silence, and if you wish you may Server Mute me.');
+    } else if (voiceChannel.full) {
+        return message.channel.send('Your voice channel is full. Expand the limit or try again later.');
     }
     if (voiceChannel.members.filter(user => user.id === client.user.id).size >= 1) return message.channel.send("I'm already in here!");
 
