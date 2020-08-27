@@ -20,7 +20,7 @@ client.once('ready', async () => {
     client.guilds.cache.forEach(g => numUsers += g.memberCount);
     console.log(`Ready! Connected to ${client.guilds.cache.size} server(s), containing ${numUsers} users in total.`);
     //set bots "playing" status to be the help command
-    client.user.setPresence({activity: {name: `${config.prefix}help`}, status: 'online'});
+    PresenceCheck()
 
     //initialize all modules
     console.log('Performing module setups...');
@@ -83,4 +83,16 @@ client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
 
 async function EscapeEmote(message, args) {
     return message.channel.send(`\\${args[0]}`);
+}
+
+async function PresenceCheck() {
+    //valid types are LISTENING, PLAYING, STREAMING, WATCHING
+    if (client.user.presence.activities.length == 0) {
+        client.user.setPresence({activity: {
+            name: `for ${config.prefix}help`,
+            type: `WATCHING`
+        }, status: 'online'});
+    }
+    //recall once an hour
+    setTimeout(PresenceCheck, 1000*60*60);
 }
