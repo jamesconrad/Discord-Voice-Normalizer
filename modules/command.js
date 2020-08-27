@@ -10,6 +10,7 @@ function Initialize() {
     let c = [
         { command: 'toggle', callback: ToggleModule },
         { command: 'changeprefix', callback: ChangePrefix },
+        { command: 'prefix', callback: DisplayPrefix },
         { command: 'nic', callback: NotifyInvalidCommand },
     ];
     RegisterModule("command", c, false, 0);
@@ -18,6 +19,7 @@ function Initialize() {
         description: `Command Handler`,
         fields: [
             {name: '!changeprefix', value: 'Change the prefix for all commands. Requires user to have administrator permission.'},
+            {name: '!prefix', value: 'Display the prefix for this server.'},
             {name: '!toggle', value: 'Disable/Enable a module, module names can be found at the description of it\'s !help page. ex: !toggle trivia'},
             {name: '!nic', value: 'Disable/Enable informing users on invalid and disabled commands.'},
         ]
@@ -139,6 +141,10 @@ function ChangePrefix(message, args) {
     guildConfig.prefix = args[0];
     database.UpdateGuildConfig(guildConfig);
     return message.channel.send(`Command prefix has been changed to: ${args[0]}`);
+}
+
+function DisplayPrefix(message, args) {
+    return message.channel.send(`This server's prefix is: ${database.GetGuildConfig(message.guild.id).prefix}`);
 }
 
 //toggles the notification messages on invalid commands
