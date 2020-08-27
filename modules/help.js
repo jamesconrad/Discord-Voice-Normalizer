@@ -35,8 +35,14 @@ exports.Initialize = Initialize;
 
 //display the interactive help menu
 function Help(message, args) {
+    //fetch cfg
+    let cfg;
+    if (message.channel.type == 'dm')
+        cfg = database.default_cfg;
+    else
+        cfg = database.GetGuildConfig(message.guild.id);
+    
     //send the first page,
-    let cfg = database.GetGuildConfig(message.guild.id);
     message.channel.send(GetPage(0, cfg)).then(m => {
         //add this help menu to the tracker
         activeHelps.set(m.id, {currentPage: 0, message: m});
@@ -103,7 +109,12 @@ function OnReact(reaction, user) {
     let activeHelp = activeHelps.get(reaction.message.id);
     let curPage = activeHelp.currentPage;
     let newPage = 0;
-    let cfg = database.GetGuildConfig(reaction.message.guild.id);
+    //fetch cfg
+    let cfg;
+    if (reaction.message.channel.type == 'dm')  
+        cfg = database.default_cfg;
+    else 
+        cfg = database.GetGuildConfig(reaction.message.guild.id);
     //verify reaction was a valid emoji
     switch (reaction.emoji.name) {
         case reactArray[0]: //prev page
@@ -134,8 +145,17 @@ function OnReact(reaction, user) {
 //log a message into the log file, currently only for direct messages
 function OnDirectMessage(message) {
     //discard bots
-    if(message.author.bot)
+    if (message.author.bot)
         return;
+    else if (message.content.startsWith('!')) {
+        let cmd = message.content.toLowerCase();
+        if (cmd === '!help') {
+            Help(message, null);
+            message.channel.send(`Please note all commands must be done inside a server with me in it. It is recommended to use !help there instead.`)
+        }
+        else
+            message.channel.send(`Commands must be done inside a server with me in it. Also note your server may have changed my prefix, use !prefix there to display my prefix`)
+    }
     //form log content
     let date = new Date(message.createdTimestamp);
     console.log(`${message.author.username}: ${message.content}, ${date.toLocaleString()}`);

@@ -4,6 +4,14 @@ const validator = require('validator');
 
 let primarydb;
 let guildCache = new Map();
+let default_cfg = {
+    name: `default`,
+    guild_id: `default`,
+    total_score: 0,
+    prefix: config.prefix,
+    disabled_modules: 0
+};
+exports.default_cfg = default_cfg;
 
 async function Initialize() {
     return new Promise(async resolve => {
@@ -94,12 +102,12 @@ async function getPromise(command, callback) {
 exports.getPromise = getPromise
 
 function CreateGuild(guild) {
-    let sql = `INSERT INTO guilds (guild_id, name, total_score, prefix, disabled_modules) VALUES (${guild.id}, \'${escape(guild.name)}\', 0, \'!\', 0);`;
+    let sql = `INSERT INTO guilds (guild_id, name, total_score, prefix, disabled_modules) VALUES (${guild.id}, \'${escape(guild.name)}\', 0, \'${escape(config.prefix)}\', 0);`;
     let cfg = {
         name: guild.name,
         guild_id: guild.id,
         total_score: 0,
-        prefix: '!',
+        prefix: config.prefix,
         disabled_modules: 0
     };
     guildCache.set(cfg.guild_id, cfg);
