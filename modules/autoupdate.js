@@ -111,6 +111,6 @@ async function RestartCountdown(notifyArray) {
         //remove first element and shift array left
         notifyArray.shift()
         //call ourself again, with the shorter array, after this segment is complete
-        setTimeout(() => { RestartCountdown(notifyArray).then(resolve()) }, timeToNextNotify);
+        setTimeout(() => { RestartCountdown(notifyArray).then(() => resolve()) }, timeToNextNotify);
     });
 }
