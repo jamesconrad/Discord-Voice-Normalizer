@@ -59,6 +59,11 @@ async function Initialize() {
 exports.Initialize = Initialize;
 
 async function Trivia(message, args) {
+    //react permission check
+    const permissions = message.channel.permissionsFor(message.guild.me);
+    if (!permissions.has('ADD_REACTIONS')){
+        return message.channel.send(`I need permission to react inorder to function.`);
+    }
     //store current time for activity checks
     trivia.lastUsed = new Date();
     used = true;

@@ -107,7 +107,9 @@ async function joinChannel(message, args) {
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) return message.channel.send('You need to be in a voice channel for me to join!');
     const permissions = voiceChannel.permissionsFor(message.guild.me);
-    if (!permissions.has('CONNECT')){
+    if (!permissions.has('VIEW_CHANNEL')) {
+        return message.channel.send('I need permissions to view your voice channel!');
+    } else if (!permissions.has('CONNECT')){
         return message.channel.send('I need the permissions to join your voice channel!');
     } else if (!permissions.has('SPEAK')) {
         return message.channel.send('Due to a restriction imposed by discord API, I need permissions to speak in that channel. Please note I will only be transmitting silence, and if you wish you may Server Mute me.');
