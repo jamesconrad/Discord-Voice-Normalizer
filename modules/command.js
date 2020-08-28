@@ -82,7 +82,9 @@ function ParseMessage(message) {
         help.OnDirectMessage(message);
         return;
     }
-    
+    //debug for tracking down a recent missing permission error that has been popping up in the logs
+    console.log(`${message.guild.name}->${message.author.username}: ${message.content}`);
+
     let cfg = database.GetGuildConfig(message.guild.id);
     let prefix = cfg.prefix;
     
