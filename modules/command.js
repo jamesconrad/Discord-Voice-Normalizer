@@ -82,8 +82,6 @@ function ParseMessage(message) {
         help.OnDirectMessage(message);
         return;
     }
-    //debug for tracking down a recent missing permission error that has been popping up in the logs
-    console.log(`${message.guild.name}->${message.author.username}: ${message.content}`);
 
     let cfg = database.GetGuildConfig(message.guild.id);
     let prefix = cfg.prefix;
@@ -91,8 +89,11 @@ function ParseMessage(message) {
     //check if they used !help, which must always remain due to discord not allowing server specific status messages.
     if (message.content.startsWith('!') && message.content.toLowerCase() === '!help')
         return moduleCommands.get('help').commands.get('help')(message, null);
-    else if (message.content.startsWith('!') && message.content.toLowerCase() === '!prefix')
+    else if (message.content.startsWith('!') && message.content.toLowerCase() === '!prefix') {
+        //debug for tracking down a recent missing permission error that has been popping up in the logs
+        console.log(`${message.guild.name}->${message.author.username}: ${message.content}`);
         return moduleCommands.get('command').commands.get('prefix')(message, null);
+    }
     //verify the command begins with the guilds prefix
     else if (!message.content.startsWith(prefix)) return;
 
