@@ -128,7 +128,7 @@ function ParseMessage(message) {
     } else {
         //command is not valid, notify if notify is enabled
         if ((cfg.disabled_modules & 2) == 0)
-            return message.channel.send(`Invalid command, use ${prefix}help for a comprehensive list of commands.`);
+            return message.channel.send(`Invalid command, use ${prefix}help for a comprehensive list of commands. This message can be toggled off/on by an admin with ${prefix}nic`);
         //silently exit if notify is disabled
     }
     return;
