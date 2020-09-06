@@ -137,10 +137,12 @@ async function BuildGuildCache() {
     return new Promise(resolve => {
         all('SELECT guild_id FROM guilds', async (guilds) => {
             await Promise.all(guilds.map(async (guild) => {
-                let sql = `SELECT guild_id, name, total_score, prefix, disabled_modules FROM guilds WHERE guild_id = ${guild.guild_id};`;
+                let sql = `SELECT * FROM guilds WHERE guild_id = ${guild.guild_id};`;
                 let e = await getPromise(sql, async (entry) => { return entry });
-                e.name = unescape(e.name);
-                e.prefix = unescape(e.prefix);
+                let keys = Object.keys(e);
+                for (i = 0; i < keys.length; i++){
+                    e[keys[i]] = unescape(e[keys[i]]);
+                }
                 guildCache.set(e.guild_id, e);
             }));
             resolve();
@@ -156,7 +158,12 @@ exports.GetGuildConfig = GetGuildConfig;
 
 function UpdateGuildConfig(config) {
     guildCache.set(config.guild_id, config);
-    run(`UPDATE guilds SET name = \'${escape(config.name)}\', total_score = ${config.total_score}, prefix = \'${escape(config.prefix)}\', disabled_modules = ${config.disabled_modules} WHERE guild_id = ${config.guild_id}`)
+    let pairs = '';
+    let keys = Object.keys(config);
+    for (i = 0; i < keys.length; i++){
+        pairs += keys[i] + " = '" + escape(config[keys[i]]) + (i == keys.length - 1 ? "' " : "', ");
+    }
+    run (`UPDATE guilds SET ${pairs} WHERE guild_id = ${config.guild_id}`);
 }
 exports.UpdateGuildConfig = UpdateGuildConfig;
 
