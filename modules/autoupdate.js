@@ -1,5 +1,6 @@
 const https = require('https');
 const activity = require('../modules/activity');
+const presence = require('../modules/presence');
 const fs = require('fs');
 const config = require('../config.json');
 let client;
@@ -37,18 +38,14 @@ async function CheckForUpdate() {
 
             //update config's node id
             config.node_id = response.commit.node_id;
-            fs.writeFileSync('./config.json', JSON.stringify(config, null, 4));
-            //config.json has been updated, time to wait for the bot to be inactive
             console.log('Waiting for chance to restart.');
             await WaitForInactiveState();
             //and to preform a countdown inside the bots "playing" status message
             console.log('Restart window detected, begining countdown.');
             //notify countdown at 5mins, 2.5mins, 1min, 30s, 15s
-            await RestartCountdown([300000, 150000, 60000, 30000, 15000, 0]);
-            //return control to the parent bash script
-            activity.EndActivityLogging();
-            console.log('Countdown finished, exiting process.');
-            process.exit(0);
+            SetRestartPresenceQueues([300000, 150000, 60000, 30000, 15000, 0]);
+            //write updated version id to config file
+            //fs.writeFileSync('./config.json', JSON.stringify(config, null, 4));
         });
     });
 };
@@ -78,39 +75,47 @@ async function WaitForInactiveState() {
     return Promise.race([activityCheck, timeout]);
 }
 
+function CountdownFinished() {
+    setTimeout(() => {
+        //cleanup
+        activity.EndActivityLogging();
+        //exit to parent bash
+        console.log('Countdown finished, exiting process.');
+        process.exit(0);
+    }, 1000);
+}
+
 //begin a countdown until restart, updating presence every interval of notifyArray, notifyArray's last element must be 0, first element determines countdown duration
-async function RestartCountdown(notifyArray) {
-    return new Promise(resolve => {
-        //resolve all recursive promises once our notifyArray is 0 (timer complete)
-        if (notifyArray.length == 0) {
-            client.user.setPresence({ activity: { name: `Restarting, Please wait.` }, status: 'online' });
-            return resolve();
+function SetRestartPresenceQueues(notifyArray) {
+    //resolve all recursive promises once our notifyArray is 0 (timer complete)
+    if (notifyArray.length == 0) {
+        presence.QueuePresence('PLAYING', `Restarting, Please wait.`, 'dnd', 30000, CountdownFinished, 0);
+        return;
+    }
+    let countdownReadable = { value: 0, unit: '' };
+    let timeToNextNotify = 0
+
+    //if length = 1, our countdown is complete since final value must be 0
+    if (notifyArray.length != 1) {
+        //calculate the time to wait until the next countdown update
+        timeToNextNotify = notifyArray[0] - notifyArray[1];
+        //convert time to a readable format
+        if (timeToNextNotify >= 60000) {
+            countdownReadable.value = notifyArray[0] / 60000;
+            countdownReadable.value > 1 ? countdownReadable.unit = 'minutes' : countdownReadable.unit = 'minute';
         }
-        let countdownReadable = { value: 0, unit: '' };
-        let timeToNextNotify = 0
-
-        //if length = 1, our countdown is complete since final value must be 0
-        if (notifyArray.length != 1) {
-            //calculate the time to wait until the next countdown update
-            timeToNextNotify = notifyArray[0] - notifyArray[1];
-            //convert time to a readable format
-            if (timeToNextNotify >= 60000) {
-                countdownReadable.value = notifyArray[0] / 60000;
-                countdownReadable.value > 1 ? countdownReadable.unit = 'minutes' : countdownReadable.unit = 'minute';
-            }
-            else {
-                countdownReadable.value = notifyArray[0] / 1000;
-                countdownReadable.unit = 'seconds';
-            }
+        else {
+            countdownReadable.value = notifyArray[0] / 1000;
+            countdownReadable.unit = 'seconds';
         }
+    }
 
-        //notify users via bot status
-        if (countdownReadable.value > 0)
-            client.user.setPresence({ activity: { name: `Restarting in: ${countdownReadable.value} ${countdownReadable.unit}` }, status: 'online' });
-
-        //remove first element and shift array left
-        notifyArray.shift()
-        //call ourself again, with the shorter array, after this segment is complete
-        setTimeout(() => { RestartCountdown(notifyArray).then(() => resolve()) }, timeToNextNotify);
-    });
+    //notify users via bot status
+    if (countdownReadable.value > 0)
+        presence.QueuePresence('PLAYING', `Restarting in: ${countdownReadable.value} ${countdownReadable.unit}`, 'idle', timeToNextNotify);
+    
+    //remove first element and shift array left
+    notifyArray.shift()
+    //call ourself again, with the shorter array
+    SetRestartPresenceQueues(notifyArray);
 }

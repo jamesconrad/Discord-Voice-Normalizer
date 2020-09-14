@@ -10,6 +10,7 @@ const updateModule = require('./modules/autoupdate');
 const activityModule = require('./modules/activity');
 const database = require('./modules/database');
 const command = require('./modules/command');
+const presenceModule = require('./modules/presence');
 //conncet to discord
 console.log('Attempting Discord connection...');
 client.login(config.token);
@@ -19,8 +20,6 @@ client.once('ready', async () => {
     let numUsers = 0;
     client.guilds.cache.forEach(g => numUsers += g.memberCount);
     console.log(`Ready! Connected to ${client.guilds.cache.size} server(s), containing ${numUsers} users in total.`);
-    //set bots "playing" status to be the help command
-    PresenceCheck()
 
     //initialize all modules
     console.log('Performing module setups...');
@@ -31,6 +30,8 @@ client.once('ready', async () => {
     voiceModule.Initialize(client);
     emoteModule.Initialize(client);
     updateModule.Initialize(client);
+    presenceModule.Initialize(client);
+    presenceModule.SetDefault('LISTENING', `to ${config.prefix}help`, 'online');
 
     //start activity log after 1 minute, ensures other modules have registered with activity module
     setTimeout(() => {console.log('Attempting to start activity log...'); activityModule.StartActivityLog()}, 1000*60);
@@ -83,16 +84,4 @@ client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
 
 async function EscapeEmote(message, args) {
     return message.channel.send(`\\${args[0]}`);
-}
-
-async function PresenceCheck() {
-    //valid types are LISTENING, PLAYING, STREAMING, WATCHING
-    if (client.user.presence.activities.length == 0) {
-        client.user.setPresence({activity: {
-            name: `for ${config.prefix}help`,
-            type: `WATCHING`
-        }, status: 'online'});
-    }
-    //recall once an hour
-    setTimeout(PresenceCheck, 1000*60*60);
 }
