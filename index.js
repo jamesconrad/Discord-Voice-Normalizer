@@ -32,6 +32,8 @@ client.once('ready', async () => {
     updateModule.Initialize(client);
     presenceModule.Initialize(client);
     presenceModule.SetDefault('LISTENING', `to ${config.prefix}help`, 'online');
+    //prompt for trivia usage for 1 minute every 60 minutes
+    presenceModule.AddRepeatingPresence('PLAYING', `${config.prefix}trivia anyone?`, 'online', 60000, null, 0, 60000*60, -1);
 
     //start activity log after 1 minute, ensures other modules have registered with activity module
     setTimeout(() => {console.log('Attempting to start activity log...'); activityModule.StartActivityLog()}, 1000*60);

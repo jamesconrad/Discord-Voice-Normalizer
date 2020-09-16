@@ -66,7 +66,7 @@ async function ProcessQueueElement() {
     let element = presenceQueue.dequeue();
     client.user.setPresence(element[0])
         .then(() => {
-            console.log(`Presence is now: ${element[0].activity.type} ${element[0].activity.name}, ${element[0].status}. For ${element[1]}${element[2] != null ? ` with a callback on mode ${element[3]}.` : `.`})`);
+            console.log(`Presence is now: ${element[0].activity.type} ${element[0].activity.name}, ${element[0].status}. For ${element[1]}${element[2] != null ? ` with a callback on mode ${element[3]}.` : `.`}`);
             if (element[2] != null && (element[3] == 0 || element[3] == 2))
                 element[2]();
         });
@@ -78,17 +78,44 @@ async function ProcessQueueElement() {
             client.user.setPresence(defaultPresence)
                 .then(() => {
                     console.log(`Presence is now: ${defaultPresence.activity.type} ${defaultPresence.activity.name}, ${defaultPresence.status}.`);
+                    currentlyProcessingQueue = false;
                 });
         else
             ProcessQueueElement();
     }, element[1]);
 }
 
-//same as queue but interval is delay between re-queueing event, and repeatCount = number of times to repeat
-async function AddRepeatingEvent(_type, _name, _status, _time = 0, _callback = null, _callbackMode = 1, _interval, _repeatCount = 0) {
+//same as queue but interval is delay between re-queueing event, and repeatCount = number of times to repeat (-1 for forever)
+async function AddRepeatingPresence(_type, _name, _status, _time = 0, _callback = null, _callbackMode = 1, _interval, _repeatCount = -1, _startNow) {
     if (!validTypes.includes(_type)) return console.log(`ERROR: Invalid presence type: ${_type}.`);
     else if (!validStatus.includes(_status)) return console.log(`ERROR: Invalid presence status: ${_status}.`);
     else if (_time < 0) return console.log(`ERROR: Invalid presence queue time: ${_time} must not be negative.`);
     else if (_callbackMode < 0 || _callbackMode > 2) return console.log(`ERROR: Invalid callback mode: ${_time} is not within range of 0 - 2 (inclusive).`);
-    repeatingEvents.push({ enqueue: [{ activity: { name: _name, type: _type }, status: _status }, _time, _callback, _callbackMode], interval: _interval, repeatCount: _repeatCount });
+    let event = { enqueue: [{ activity: { name: _name, type: _type }, status: _status }, _time, _callback, _callbackMode], interval: _interval, repeatCount: _repeatCount };
+    //repeatingEvents.push(event);
+    if (_startNow) ProcessRepeatingPresence(event)
+    else setTimeout(() => ProcessRepeatingPresence(event), event.interval);
+}
+exports.AddRepeatingPresence = AddRepeatingPresence;
+
+function RepeatPresence(event) {
+        if (event.repeatCount == 0)
+            return false;
+        event.repeatCount--;
+        presenceQueue.enqueue(event.enqueue);
+        Tick();
+        return true;
+}
+
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve,ms))
+}
+
+async function ProcessRepeatingPresence(event) {
+    return new Promise(async resolve => {
+        while(RepeatPresence(event)) {
+            await timeout(event.interval)
+        }
+        resolve();
+    })
 }
