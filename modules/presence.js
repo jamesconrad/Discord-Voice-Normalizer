@@ -52,7 +52,7 @@ async function Tick() {
     if (presenceQueue.length() == 0) {
         return client.user.setPresence(defaultPresence)
             .then(() => {
-                console.log(`Presence is now: ${defaultPresence.activity._type} ${defaultPresence.activity.name}, ${defaultPresence._status}.`);
+                console.log(`Presence is now: ${defaultPresence.activity.type} ${defaultPresence.activity.name}, ${defaultPresence.status}.`);
             });
     }
     else if (currentlyProcessingQueue) return;
@@ -66,7 +66,7 @@ async function ProcessQueueElement() {
     let element = presenceQueue.dequeue();
     client.user.setPresence(element[0])
         .then(() => {
-            console.log(`Presence is now: ${element[0].activity._type} ${element[0].activity.name}, ${element[0]._status}. For ${element[1]}${element[2] != null ? ` with a callback on mode ${element[3]}.` : `.`})`);
+            console.log(`Presence is now: ${element[0].activity.type} ${element[0].activity.name}, ${element[0].status}. For ${element[1]}${element[2] != null ? ` with a callback on mode ${element[3]}.` : `.`})`);
             if (element[2] != null && (element[3] == 0 || element[3] == 2))
                 element[2]();
         });
@@ -77,7 +77,7 @@ async function ProcessQueueElement() {
         if (presenceQueue.length() == 0)
             client.user.setPresence(defaultPresence)
                 .then(() => {
-                    console.log(`Presence is now: ${defaultPresence.activity._type} ${defaultPresence.activity.name}, ${defaultPresence._status}.`);
+                    console.log(`Presence is now: ${defaultPresence.activity.type} ${defaultPresence.activity.name}, ${defaultPresence.status}.`);
                 });
         else
             ProcessQueueElement();
