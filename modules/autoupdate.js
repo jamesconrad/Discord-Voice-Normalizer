@@ -45,7 +45,7 @@ async function CheckForUpdate() {
             //notify countdown at 5mins, 2.5mins, 1min, 30s, 15s
             SetRestartPresenceQueues([300000, 150000, 60000, 30000, 15000, 0]);
             //write updated version id to config file
-            //fs.writeFileSync('./config.json', JSON.stringify(config, null, 4));
+            fs.writeFileSync('./config.json', JSON.stringify(config, null, 4));
         });
     });
 };
