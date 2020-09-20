@@ -86,7 +86,7 @@ async function ProcessQueueElement() {
 }
 
 //same as queue but interval is delay between re-queueing event, and repeatCount = number of times to repeat (-1 for forever)
-async function AddRepeatingPresence(_type, _name, _status, _time = 0, _callback = null, _callbackMode = 1, _interval, _repeatCount = -1, _startNow) {
+async function AddRepeatingPresence(_type, _name, _status, _time = 0, _callback = null, _callbackMode = 1, _interval, _repeatCount = -1, _startNow = true) {
     if (!validTypes.includes(_type)) return console.log(`ERROR: Invalid presence type: ${_type}.`);
     else if (!validStatus.includes(_status)) return console.log(`ERROR: Invalid presence status: ${_status}.`);
     else if (_time < 0) return console.log(`ERROR: Invalid presence queue time: ${_time} must not be negative.`);
