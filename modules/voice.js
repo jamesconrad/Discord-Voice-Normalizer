@@ -276,9 +276,8 @@ async function Normalize(message, args) {
     let min = 9007199254740992;//max size of int
     let avg = 0;
     let totalSampleVol = 0;
-    let notEnoughSamples = [];
     let desiredVol = -1;
-    let argFlags = { ignoreSender: false, useAverageVol: false };
+    let argFlags = { ignoreSender: false, useAverageVol: false, allowBots: false };
     let ignoredUsers = [];
 
     //parse args
@@ -287,6 +286,7 @@ async function Normalize(message, args) {
         retString += "\n[number] : any number within 0 - 200 (inclusive)";
         retString += "\n-a or -average : center each user around voice chat average volume";
         retString += "\n-i or -ignore : remove yourself from calculations";
+        retString += `\n-b or -bots: allows bots to be included in the normalization.`;
         retString += `\nExample: !n 50 -a : determines user volumes in relation to half room average`;
         return message.channel.send(retString)
     }
@@ -301,6 +301,9 @@ async function Normalize(message, args) {
         else if (a == '-a' || a == '-average') {
             argFlags.useAverageVol = true;
         }
+        else if (a == '-b' || a == '-bots') {
+            argFlags.allowBots = true;
+        }
     });
     if (desiredVol < 0 || desiredVol > 200) {
         retString += `No valid volume passed, defaulting to 100%\n`;
@@ -311,17 +314,21 @@ async function Normalize(message, args) {
     let filteredUserStats = []
     guildNormal.userStats.forEach(userStat => {
         if (ignoredUsers.includes(userStat.user.id)) return;
-        else if (userStat.user.bot) return;
+        else if (userStat.user.id == client.user.id) return;
+        else if (userStat.user.bot && argFlags.allowBots == false ) return;
         filteredUserStats.push(userStat)
     });
     if (!(filteredUserStats.length > 0)) return message.channel.send("Error: All users in chat are being filtered out. Try removing some filters you have set.")
 
-    //calcualte average volumes
+    //filter and calcualte samples into two seperate arrays
+    let finalUserStats = [];
+    let notEnoughSamples = [];
     filteredUserStats.forEach(userStat => {
-        //ensure everyone has spoken, prep return array to inform those who havn't
+        //filter users who have not spoken yet
         if (userStat.perceivedSamples < 1)
             notEnoughSamples.push(userStat.user);
         else {
+            finalUserStats.push(userStat);
             let userAvg = userStat.perceivedTotalSampleAvg / userStat.perceivedSamples;
             if (userAvg <= min) {
                 min = userAvg;
@@ -330,13 +337,10 @@ async function Normalize(message, args) {
             totalSampleVol += userAvg;
         }
     });
-    avg = totalSampleVol / filteredUserStats.length;
+    avg = totalSampleVol / finalUserStats.length;
 
-    //early exit if we are missing volumes
-    if (notEnoughSamples.length >= 1) {
-        retString = `Some people havn't talked yet!\nWait until the following have talked at least once:`;
-        notEnoughSamples.forEach(user => { retString += `\n     ${user.username}` });
-        return message.channel.send(retString);
+    if (finalUserStats.length <= 0) {
+        return message.channel.send(`Nobody has talked yet, try again after atleast one non-bot user has spoken`)
     }
 
     //setup outputs
@@ -349,7 +353,7 @@ async function Normalize(message, args) {
     //convert desired volume scalar into a db value, and offset our target by it
     targetdB += 33.21928095 * (Math.log((desiredVol / 100))) / Math.log(10);
 
-    filteredUserStats.forEach(userStat => {
+    finalUserStats.forEach(userStat => {
         //calculate target db levels
         let userdB = ToDecibels(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
         let deltadB = targetdB - userdB;
@@ -358,6 +362,13 @@ async function Normalize(message, args) {
         //add user's new volume to output
         retString += `\n${userStat.user.username} -> ${(loudnessRatio * 100).toFixed(2)}% (△${deltadB.toFixed(2)}dB)`;
     });
+
+    //inform users if some users were ignored due to not talking
+    if (notEnoughSamples.length >= 1) {
+        retString = `The following people havn't talked yet, and have been ignored:`;
+        notEnoughSamples.forEach(user => { retString += `\n\t${user.username}` });
+    }
+
     return message.channel.send(retString);
 }
 exports.Normalize = Normalize;
@@ -406,7 +417,7 @@ function AddHelpPages() {
             { name: '!leavevoice', value: 'Leave your voice channel.', inline: true },
             { name: '!volume', value: 'Display each speakers percieved volume.', inline: true },
             { name: '!normalize [desired volume]', value: 'Display normalized user volumes.\n(Relative to quietest user)', inline: true },
-            { name: '!normalize -a [desired volume]', value: 'Display normalized user volumes.\n(Relative to average volume)', inline: true },
+            { name: '!normalize -help', value: 'Display comprehensive normalize command usage.', inline: true }
         ]
     };
     help.AddPage('voice', page);
