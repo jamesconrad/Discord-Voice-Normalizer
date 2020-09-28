@@ -36,7 +36,6 @@ exports.Initialize = Initialize;
 //display the interactive help menu
 function Help(message, args) {
     //react permissions check
-    console.log(message);
     if (message.channel.type != 'dm') {
         const permissions = message.channel.permissionsFor(message.guild.me);
         if (!permissions.has('ADD_REACTIONS')) {
