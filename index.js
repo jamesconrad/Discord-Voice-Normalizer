@@ -31,7 +31,7 @@ client.once('ready', async () => {
     emoteModule.Initialize(client);
     updateModule.Initialize(client);
     presenceModule.Initialize(client);
-    presenceModule.SetDefault('LISTENING', `to ${config.prefix}help`, 'online');
+    presenceModule.SetDefault('LISTENING', `${config.prefix}help`, 'online');
     //prompt for trivia usage for 1 minute every 60 minutes
     presenceModule.AddRepeatingPresence('PLAYING', `${config.prefix}trivia anyone?`, 'online', 60000, null, 0, 60000*60, -1, false);
 
