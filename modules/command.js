@@ -204,7 +204,7 @@ function ToggleModule(message, args) {
         if (results.invalid.length == 1) response += `${results.invalid[0]} is not a valid module`
         else {
             response += 'These are not valid modules: '
-            results.invalid.length.forEach(m => response += `${m} `)
+            results.invalid.forEach(m => response += `${m} `)
         }
         response += '.\n';
     }
@@ -212,7 +212,7 @@ function ToggleModule(message, args) {
         if (results.forbidden.length == 1) response += `${results.forbidden[0]} cannot be disabled`
         else {
             response += 'These modules cannot be disabled: '
-            results.forbidden.length.forEach(m => response += `${m} `)
+            results.forbidden.forEach(m => response += `${m} `)
         }
         response += '.\n';
     }
@@ -220,7 +220,7 @@ function ToggleModule(message, args) {
         if (results.toggled_off.length == 1) response += `${results.toggled_off[0]} has been disabled`
         else {
             response += 'These modules have been disabled: '
-            results.toggled_off.length.forEach(m => response += `${m} `)
+            results.toggled_off.forEach(m => response += `${m} `)
         }
         response += '.\n';
     }
@@ -228,7 +228,7 @@ function ToggleModule(message, args) {
         if (results.toggled_on.length == 1) response += `${results.toggled_on[0]} has been enabled`
         else {
             response += 'These modules have been enabled: '
-            results.toggled_on.length.forEach(m => response += `${m} `)
+            results.toggled_on.forEach(m => response += `${m} `)
         }
         response += '.\n';
     }
