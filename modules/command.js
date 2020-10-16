@@ -94,9 +94,6 @@ function ParseMessage(message) {
     }
     //verify the command begins with the guilds prefix
     else if (!message.content.startsWith(prefix)) return;
-
-    //debug for tracking down a recent missing permission error that has been popping up in the logs
-    console.log(`${message.guild.name}->${message.author.username}: ${message.content}`);
     
     //parse command and arguments, then handle accordingly
     const args = message.content.slice(prefix.length).split(/ +/);
@@ -116,6 +113,8 @@ function ParseMessage(message) {
     });
     
     if (valid) {
+        //debug for tracking down a recent missing permission error that has been popping up in the logs
+        console.warn(`${message.guild.name}->${message.author.username}: ${message.content}`);
         if (enabled) {
             //call command's callback
             modCommand.commands.get(command)(message, args);
