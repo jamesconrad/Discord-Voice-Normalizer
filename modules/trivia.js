@@ -154,11 +154,9 @@ async function Trivia(message, args) {
             else
                 return message.channel.send(`${d} is not a valid difficulty. Must be easy, medium, or hard.`);
         } else if (args[i] == '-serverscore' || args[i] == '-ss') {
-            let table = await database.getPromise(`SELECT * FROM guilds`, async (res) => {
-                if (res.length == undefined) return [res];
+            let table = await database.allPromise(`SELECT * FROM guilds`, async (res) => {
                 return res.sort((a,b) => {return a.total_score - b.total_score});
             });
-            console.log(table);
             let embed = new Discord.MessageEmbed()
                 .setTitle(`Global Server Trivia Scores`)
                 .setColor('#0099ff')
