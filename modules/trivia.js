@@ -155,15 +155,17 @@ async function Trivia(message, args) {
                 return message.channel.send(`${d} is not a valid difficulty. Must be easy, medium, or hard.`);
         } else if (args[i] == '-serverscore' || args[i] == '-ss') {
             let table = await database.allPromise(`SELECT * FROM guilds`, async (res) => {
-                return res.sort((a,b) => {return a.total_score - b.total_score});
+                return res.sort((a,b) => {return b.total_score - a.total_score});
             });
             let embed = new Discord.MessageEmbed()
                 .setTitle(`Global Server Trivia Scores`)
                 .setColor('#0099ff')
             //alltime score
-            let sfield = {name: `All Time Top Servers${table.length > 1 ? 's' : ''}:`, value: ``, inline: true};
-            //table = table.sort((a, b) => (b.s - a.s));
-            table.forEach(e => sfield.value += `${unescape(e.name)}: ${e.total_score}\n`);
+            let sfield = {name: `All Time Top Server${table.length > 1 ? 's' : ''}:`, value: ``, inline: true};
+            for (i = 0; i < table.length && i < 10; i++) {
+                e = table[i];
+                sfield.value += `${unescape(e.name)}: ${e.total_score}\n`;
+            }
             embed.fields.push(sfield);
             //send scores
             return message.channel.send(embed);
