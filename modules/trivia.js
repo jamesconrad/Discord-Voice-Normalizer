@@ -164,6 +164,7 @@ async function Trivia(message, args) {
             let sfield = {name: `All Time Top Server${table.length > 1 ? 's' : ''}:`, value: ``, inline: true};
             for (i = 0; i < table.length && i < 10; i++) {
                 e = table[i];
+                if (e.total_score <= 0) break;
                 sfield.value += `${unescape(e.name)}: ${e.total_score}\n`;
             }
             embed.fields.push(sfield);
