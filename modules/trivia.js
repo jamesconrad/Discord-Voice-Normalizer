@@ -153,6 +153,22 @@ async function Trivia(message, args) {
                 difficulty = d;
             else
                 return message.channel.send(`${d} is not a valid difficulty. Must be easy, medium, or hard.`);
+        } else if (args[i] == '-serverscore' || args[i] == '-ss') {
+            let table = await database.getPromise(`SELECT * FROM guilds`, async (res) => {
+                if (res.length == undefined) return [res];
+                return res.sort((a,b) => {return a.total_score - b.total_score});
+            });
+            console.log(table);
+            let embed = new Discord.MessageEmbed()
+                .setTitle(`${message.guild.name} Trivia Scores`)
+                .setColor('#0099ff')
+            //alltime score
+            let sfield = {name: `All Time Top Servers${table.length > 1 ? 's' : ''}:`, value: ``, inline: true};
+            //table = table.sort((a, b) => (b.s - a.s));
+            table.forEach(e => sfield.value += `${unescape(e.name)}: ${e.total_score}\n`);
+            embed.fields.push(sfield);
+            //send scores
+            return message.channel.send(embed);
         }
     }
     //fetch a trivia token if this guild dosn't have one
@@ -389,6 +405,7 @@ function AddHelpPages() {
             {name: '!trivia -categories', value: 'List all available categories.', inline: true},
             {name: '!trivia -score', value: 'Display this servers trivia leaderboards.', inline: true},
             {name: '!trivia -myscore', value: 'Display your score.', inline: true},
+            {name: '!trivia -serverscore', value: 'Displays global trivia score by servers.', inline: false},
             {name: '!trivia -c [number]', value: 'Play a trivia from the given category.', inline: true},
             {name: '!trivia -r [number]', value: 'Repeats the category number times.', inline: true},
             {name: '!trivia -d [easy,medium,hard]', value: 'Forces a specific question difficulty.', inline: false},
