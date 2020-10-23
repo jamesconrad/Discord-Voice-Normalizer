@@ -160,7 +160,7 @@ async function Trivia(message, args) {
             });
             console.log(table);
             let embed = new Discord.MessageEmbed()
-                .setTitle(`${message.guild.name} Trivia Scores`)
+                .setTitle(`Global Server Trivia Scores`)
                 .setColor('#0099ff')
             //alltime score
             let sfield = {name: `All Time Top Servers${table.length > 1 ? 's' : ''}:`, value: ``, inline: true};
