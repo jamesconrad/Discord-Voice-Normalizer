@@ -3,8 +3,8 @@ const config = require('../config.json');
 const validator = require('validator');
 
 let primarydb;
-let guildCache = new Map();
-let default_cfg = {
+const guildCache = new Map();
+const default_cfg = {
     name: `default`,
     guild_id: `default`,
     total_score: 0,
