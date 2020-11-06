@@ -76,6 +76,10 @@ function RegisterCommand(moduleName, command, callback) {
 
 //handles dispatching all commands from every message
 function ParseMessage(message) {
+    const permissions = message.channel.permissionsFor(message.guild.me);
+    if (!permissions.has('SEND_MESSAGES')){
+        return console.warn(`Missing permission: SEND_MESSAGES\n\t${message.guild.name}->${message.author.username}: ${message.content}`);
+    }
     //ignore invalid messages
     if (message.author.bot) return;
     if (message.channel.type ==  'dm') {
