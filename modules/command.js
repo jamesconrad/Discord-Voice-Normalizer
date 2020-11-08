@@ -85,7 +85,8 @@ function ParseMessage(message) {
     //ignore any channel we cannot respond to
     const permissions = message.channel.permissionsFor(message.guild.me);
     if (!permissions.has('SEND_MESSAGES')){
-        return console.warn(`Missing permission: SEND_MESSAGES\n\t${message.guild.name}->${message.author.username}: ${message.content}`);
+        //console.warn(`Missing permission: SEND_MESSAGES\n\t${message.guild.name}->${message.author.username}: ${message.content}`);
+        return; 
     }
 
     let cfg = database.GetGuildConfig(message.guild.id);
