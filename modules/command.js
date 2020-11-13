@@ -92,7 +92,7 @@ function ParseMessage(message) {
     let cfg = database.GetGuildConfig(message.guild.id);
     let prefix;
     if (cfg == undefined) prefix = '!';
-    else prefix = database.default_cfg.prefix;
+    else prefix = cfg.prefix;
     
     //check if they used !help, which must always remain due to discord not allowing server specific status messages.
     if (message.content.startsWith('!') && message.content.toLowerCase() === '!help')
