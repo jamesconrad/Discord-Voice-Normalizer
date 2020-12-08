@@ -4,14 +4,16 @@ const help = require('../modules/help');
 //map containing all modules and their commands
 //map(string , {name: 'string', toggle_bit: int, commands: map(string, function)} )
 const moduleCommands = new Map();
+let client;
 
-function Initialize() {
+function Initialize(_client) {
     //register commands
     let c = [
         { command: 'toggle', callback: ToggleModule },
         { command: 'changeprefix', callback: ChangePrefix },
         { command: 'prefix', callback: DisplayPrefix },
         { command: 'nic', callback: NotifyInvalidCommand },
+        { command: 'stats', callback: DisplayStats },
     ];
     RegisterModule("command", c, false, 0);
 
@@ -25,6 +27,7 @@ function Initialize() {
         ]
     };
     help.AddPage('command', page);
+    client = _client;
 }
 exports.Initialize = Initialize;
 
@@ -158,6 +161,12 @@ function ChangePrefix(message, args) {
 
 function DisplayPrefix(message, args) {
     return message.channel.send(`This server's prefix is: ${database.GetGuildConfig(message.guild.id).prefix}`);
+}
+
+function DisplayStats(message, args) {
+    let numUsers = 0;
+    client.guilds.cache.forEach(g => numUsers += g.memberCount);
+    return message.channel.send(`Currently in ${client.guilds.cache.size} server(s), containing ${numUsers} users in total.`);
 }
 
 //toggles the notification messages on invalid commands

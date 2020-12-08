@@ -25,7 +25,7 @@ client.once('ready', async () => {
     console.log('Performing module setups...');
     await database.Initialize();
     helpModule.Initialize();
-    command.Initialize();
+    command.Initialize(client);
     triviaModule.Initialize();
     voiceModule.Initialize(client);
     emoteModule.Initialize(client);
@@ -33,8 +33,8 @@ client.once('ready', async () => {
     presenceModule.Initialize(client);
     presenceModule.SetDefault('LISTENING', `${config.prefix}help`, 'online');
     //prompt for trivia usage for 1 minute every 60 minutes
-    presenceModule.AddRepeatingPresence('PLAYING', `${config.prefix}trivia anyone?`, 'online', 60000, null, 0, 60000*60, -1, false);
-    presenceModule.AddRepeatingPresence('WATCHING', `an error? DM me.`, 'online', 60000, null, 0, 60000*30, -1, false);
+    presenceModule.AddRepeatingPresence('PLAYING', `${config.prefix}trivia anyone?`, 'online', 60000, null, 0, 60000*60, -1, true);
+    presenceModule.AddRepeatingPresence('WATCHING', `an error? DM me.`, 'online', 60000, null, 0, 60000*30, -1, true);
 
     //start activity log after 1 minute, ensures other modules have registered with activity module
     setTimeout(() => {console.log('Attempting to start activity log...'); activityModule.StartActivityLog()}, 1000*60);
