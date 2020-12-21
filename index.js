@@ -56,8 +56,8 @@ client.on('guildCreate', guild => {
 //log and delete the table for any guilds the bot is removed from
 client.on('guildDelete', guild => {
     console.log(`Removed from Guild: ${guild.name}`);
-    database.RemoveGuild(guild);
     voiceModule.RemoveGuild(guild);
+    database.RemoveGuild(guild);
 });
 
 client.on('message', async message => {
@@ -83,6 +83,14 @@ client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
         //state updated, (muted)
         return;
     }
+});
+
+client.on('error', async (error) => {
+    console.log("ERROR: " + error);
+    activity.EndActivityLogging();
+    //exit to parent bash
+    console.log('Countdown finished, exiting process.');
+    process.exit(0);
 });
 
 async function EscapeEmote(message, args) {
