@@ -87,9 +87,9 @@ client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
 
 client.on('error', async (error) => {
     console.log("ERROR: " + error);
-    activity.EndActivityLogging();
     //exit to parent bash
-    console.log('Countdown finished, exiting process.');
+    console.log('Exiting process.');
+    activity.EndActivityLogging();
     process.exit(0);
 });
 
