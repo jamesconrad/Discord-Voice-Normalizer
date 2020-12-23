@@ -57,6 +57,7 @@ client.on('guildCreate', guild => {
 client.on('guildDelete', guild => {
     console.log(`Removed from Guild: ${guild.name}`);
     voiceModule.RemoveGuild(guild);
+    helpModule.RemoveGuild(guild);
     database.RemoveGuild(guild);
 });
 
@@ -86,7 +87,7 @@ client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
 });
 
 client.on('error', async (error) => {
-    console.log("ERROR: " + error);
+    console.log("ERROR: \n" + error);
     //exit to parent bash
     console.log('Exiting process.');
     activity.EndActivityLogging();

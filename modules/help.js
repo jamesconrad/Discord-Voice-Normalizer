@@ -53,7 +53,7 @@ function Help(message, args) {
     message.channel.send(GetPage(0, cfg)).then(m => {
         //add this help menu to the tracker
         activeHelps.set(m.id, {currentPage: 0, message: m});
-        reactArray.forEach(e => m.react(e));
+        reactArray.forEach(e => m.react(e).catch(() => { return }));
         //create the reaction collector
         let timeout = 600000;
         const collector = new Discord.ReactionCollector(m, (reaction, user) => !user.bot, {time: timeout, dispose: true});
@@ -64,8 +64,12 @@ function Help(message, args) {
         setTimeout(() => {
             //if help page was deleted or removed, skip this step
             if (m.id && !activeHelps.has(m.id)) return;
-            activeHelps.delete(m.id);
-            m.delete();
+            m.channel.messages.fetch(m.id)
+              .then(() => {
+                activeHelps.delete(m.id);
+                m.delete();
+              })
+              .catch(() => { return });
         },timeout)
     });
 
@@ -175,3 +179,14 @@ function OnDirectMessage(message) {
     });
 }
 exports.OnDirectMessage = OnDirectMessage;
+
+function RemoveGuild(guild) {
+    //activeHelps.has(m.id)
+    let droppedIds = [];
+    activeHelps.forEach((value, key) => {
+        if (value.m.guild.id == guild.id) droppedIds.push(key);
+    });
+    if (droppedIds.length >= 1) console.warn(`Removed from guild ${guild.name} with ${droppedIds.length} active help commands.`)
+    droppedIds.forEach((value) => activeHelps.delete(value));
+}
+exports.RemoveGuild = RemoveGuild;

@@ -98,9 +98,12 @@ function ParseMessage(message) {
     else prefix = cfg.prefix;
     
     //check if they used !help, which must always remain due to discord not allowing server specific status messages.
-    if (message.content.startsWith('!') && message.content.toLowerCase() === '!help')
-        return moduleCommands.get('help').commands.get('help')(message, null);
+    if (message.content.startsWith('!') && message.content.toLowerCase() === '!help') {
+        console.warn(`${message.guild.name}->${message.author.username}: ${message.content}`);
+        return moduleCommands.get("help").commands.get("help")(message, null);
+    }
     else if (message.content.startsWith('!') && message.content.toLowerCase() === '!prefix') {
+        console.warn(`${message.guild.name}->${message.author.username}: ${message.content}`);
         return moduleCommands.get('command').commands.get('prefix')(message, null);
     }
     //verify the command begins with the guilds prefix
