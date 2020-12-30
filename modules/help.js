@@ -184,7 +184,7 @@ function RemoveGuild(guild) {
     //activeHelps.has(m.id)
     let droppedIds = [];
     activeHelps.forEach((value, key) => {
-        if (value.m.guild.id == guild.id) droppedIds.push(key);
+        if (value.message.guild.id == guild.id) droppedIds.push(key);
     });
     if (droppedIds.length >= 1) console.warn(`Removed from guild ${guild.name} with ${droppedIds.length} active help commands.`)
     droppedIds.forEach((value) => activeHelps.delete(value));
