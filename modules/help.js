@@ -41,6 +41,9 @@ function Help(message, args) {
         if (!permissions.has('ADD_REACTIONS')) {
             return message.channel.send(`I need permission to react inorder to function.`);
         }
+        else if (!permissions.has('EMBED_LINKS')) {
+            return message.channel.send(`I need permission to embed links, specifically this bot's github repo.`);
+        }
     }
     //fetch cfg
     let cfg;
