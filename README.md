@@ -2,7 +2,7 @@
 Discord bot to normalize peoples voice in a channel.
 
 ## Adding the bot to your server:
-https://discordapp.com/oauth2/authorize?client_id=644968401969741838&scope=bot&permissions=3148800
+https://discord.com/oauth2/authorize?client_id=644968401969741838&scope=bot&permissions=3165184
 
 ## Features:
 Voice normalizer<br/>
