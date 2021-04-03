@@ -86,8 +86,10 @@ client.on('voiceStateUpdate', async (oldVoiceState, newVoiceState) => {
     }
 });
 
-client.on('error', async (error) => {
-    console.log("ERROR: \n" + error);
+process.on('unhandledRejection', function(err, promise) {
+    //post error in channel and log file
+    client.channels.cache.get(config.errorReportChannelID).send("```" + err + "```");
+    console.log("ERROR: \n" + err);
     //exit to parent bash
     console.log('Exiting process.');
     activity.EndActivityLogging();
