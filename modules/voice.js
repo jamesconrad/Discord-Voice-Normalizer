@@ -217,7 +217,7 @@ async function BeginRecording(guildNormal, user) {
     const userStat = guildNormal.userStats.get(user.id);
     const receiver = guildNormal.connection.receiver;
     //create the stream to receive the voice data, automatically destroyed when they stop talking
-    const audioStream = receiver.createStream(user, { mode: 'pcm', end: 'silence' });//32bit signed stero 48khz
+    const audioStream = receiver.createStream(user, { mode: 'pcm', end: 'silence' }).on('error', (e) => console.log(`Safely caught audioStream ERROR: ${e}`));//32bit signed stero 48khz
     //calculate average volumes as data comes in
     audioStream.on('readable', () => {
         let chunk;
