@@ -37,7 +37,7 @@ client.once('ready', async () => {
     presenceModule.AddRepeatingPresence('WATCHING', `an error? DM me.`, 'online', 60000, null, 0, 60000*30, -1, false);
 
     //start activity log after 1 minute, ensures other modules have registered with activity module
-    setTimeout(() => {console.log('Attempting to start activity log...'); activityModule.StartActivityLog()}, 1000*60);
+    setTimeout(() => {console.log('Attempting to start activity log...'); activityModule.StartActivityLog()}, 1000*10);
     //update db
     client.guilds.cache.forEach(g => database.UpdateGuild(g));
 });
@@ -91,9 +91,9 @@ process.on('unhandledRejection', function(err, promise) {
     client.channels.cache.get(config.errorReportChannelID).send("```" + err + "```");
     console.log("ERROR: \n" + err);
     //exit to parent bash
-    console.log('Exiting process.');
-    activity.EndActivityLogging();
-    process.exit(0);
+    //console.log('Exiting process.');
+    //activityModule.EndActivityLogging();
+    //process.exit(0);
 });
 
 async function EscapeEmote(message, args) {

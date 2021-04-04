@@ -277,7 +277,7 @@ async function Normalize(message, args) {
     let avg = 0;
     let totalSampleVol = 0;
     let desiredVol = -1;
-    let argFlags = { ignoreSender: false, useAverageVol: false, allowBots: false };
+    let argFlags = { ignoreSender: false, useAverageVol: false, allowBots: false, test: false };
     let ignoredUsers = [];
 
     //parse args
@@ -287,6 +287,7 @@ async function Normalize(message, args) {
         retString += "\n-a or -average : center each user around voice chat average volume";
         retString += "\n-i or -ignore : remove yourself from calculations";
         retString += `\n-b or -bots: allows bots to be included in the normalization.`;
+        retString += `\n-t or -test: populates the results with 4 fake users.`;
         retString += `\nExample: !n 50 -a : determines user volumes in relation to half room average`;
         return message.channel.send(retString)
     }
@@ -304,6 +305,9 @@ async function Normalize(message, args) {
         else if (a == '-b' || a == '-bots') {
             argFlags.allowBots = true;
         }
+        else if (a == '-t' || a == '-test') {
+            argFlags.test = true;
+        }
     });
     if (desiredVol < 0 || desiredVol > 200) {
         retString += `No valid volume passed, defaulting to 100%\n`;
@@ -318,7 +322,14 @@ async function Normalize(message, args) {
         else if (userStat.user.bot && argFlags.allowBots == false ) return;
         filteredUserStats.push(userStat)
     });
-    if (!(filteredUserStats.length > 0)) return message.channel.send("Error: All users in chat are being filtered out. Try removing some filters you have set.")
+    if (!(filteredUserStats.length > 0)) return message.channel.send("Error: All users in chat are being filtered out. Try removing some filters you have set.");
+    else if (filteredUserStats.length == 1 && !argFlags.test) retString += "Warning: There is only 1 non filtered user. Try adjusting your filters if they are set, or try using the -test argument if this is a test.";
+
+    if (argFlags.test == true) {
+        for (i = 0; i < 4; i++) {
+            filteredUserStats.push({perceivedSamples: 1, perceivedTotalSampleAvg: Math.pow(10,(50 + i*5)/20), user: {username: `TestUser${50 + i*5}dB`}});
+        }
+    }
 
     //filter and calcualte samples into two seperate arrays
     let finalUserStats = [];
