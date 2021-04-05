@@ -47,15 +47,15 @@ async function ImportEmote(message, args) {
     //form and return results
     let retString = '';
     if (result.existing.length >= 1) {
-        retString += 'The following failed to be added because there was already an emote using their name:\n'
+        retString += 'The following failed to be added because there was already an emote using their name:\n';
         result.existing.forEach(e => { retString += ' ' + e.toString() });
     }
     if (result.notfound.length >= 1) {
-        retString += '\nThe following were not found on FrankerFaceZ:\n'
+        retString += '\nThe following were not found on FrankerFaceZ:\n';
         result.notfound.forEach(e => { retString += ' ' + e.toString() });
     }
     if (result.added.length >= 1) {
-        retString += '\nThe following were successfully added:\n'
+        retString += '\nThe following were successfully added:\n';
         result.added.forEach(e => { retString += ' ' + e.toString() });
     }
     //clear activity flag
@@ -123,7 +123,7 @@ async function AttemptEmoteImports(message, args) {
                             //server didn't give a valid response so emote was not found
                             else results.notfound.push(emote);
                             //increment and check if we are complete
-                            completed++
+                            completed++;
                             if (completed >= args.length)
                                 resolveBar();
                         });

@@ -15,7 +15,7 @@ exports.AddActivityCheck = AddActivityCheck;
 //result is wether all tests passed, modules contians individual results
 //object { result: bool, modules: [{ name, result }] }
 function CheckActivity() {
-    let ret = {result: false, modules: []}
+    let ret = {result: false, modules: []};
     activityChecks.forEach(e => {
         let active = e.func();
         ret.modules.push({name: e.name, result: active});
@@ -33,15 +33,15 @@ function StartActivityLog() {
     //send headers if file doesn't exist
     var sh = !fs.existsSync('activityLog.csv');
     //build and fill our headers, one for each module name
-    var h = ['date','activity',];
+    var h = ['date','activity'];
     activityChecks.forEach(ac => h.push(ac.name));
     activityLog = csvWriter({
         separator: ',',
         newline: '\n',
         headers: h,
-        sendHeaders: sh})
+        sendHeaders: sh});
     activityLog.pipe(fs.createWriteStream('activityLog.csv', {flags: 'a'}));
-    console.log('Acivity log started.')
+    console.log('Acivity log started.');
     ActivityLogController();
 }
 exports.StartActivityLog = StartActivityLog;

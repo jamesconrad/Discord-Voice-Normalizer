@@ -6,7 +6,7 @@ const config = require('../config.json');
 let client;
 
 function Initialize(_client) {
-    client = _client
+    client = _client;
     UpdateController();
 }
 exports.Initialize = Initialize;
@@ -18,7 +18,7 @@ async function CheckForUpdate() {
         path: '/repos/jamesconrad/Discord-Voice-Normalizer/branches/master',
         method: 'GET',
         headers: { 'Accept': 'application/json', 'User-Agent': 'jamesconrad/Discord-Voice-Normalizer' },
-    }
+    };
     https.get('https://api.github.com/repos/jamesconrad/Discord-Voice-Normalizer/branches/master', options, resp => {
         let data = '';
         resp.on('data', (chunk) => {
@@ -93,7 +93,7 @@ function SetRestartPresenceQueues(notifyArray) {
         return;
     }
     let countdownReadable = { value: 0, unit: '' };
-    let timeToNextNotify = 0
+    let timeToNextNotify = 0;
 
     //if length = 1, our countdown is complete since final value must be 0
     if (notifyArray.length != 1) {
@@ -115,7 +115,7 @@ function SetRestartPresenceQueues(notifyArray) {
         presence.QueuePresence('PLAYING', `Restarting in: ${countdownReadable.value} ${countdownReadable.unit}`, 'idle', timeToNextNotify);
     
     //remove first element and shift array left
-    notifyArray.shift()
+    notifyArray.shift();
     //call ourself again, with the shorter array
     SetRestartPresenceQueues(notifyArray);
 }

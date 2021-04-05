@@ -38,12 +38,10 @@ function Help(message, args) {
     //react permissions check
     if (message.channel.type != 'dm') {
         const permissions = message.channel.permissionsFor(message.guild.me);
-        if (!permissions.has('ADD_REACTIONS')) {
+        if (!permissions.has('ADD_REACTIONS'))
             return message.channel.send(`I need permission to react inorder to function.`);
-        }
-        else if (!permissions.has('EMBED_LINKS')) {
+        else if (!permissions.has('EMBED_LINKS'))
             return message.channel.send(`I need permission to embed links, specifically this bot's github repo.`);
-        }
     }
     //fetch cfg
     let cfg;
@@ -165,10 +163,10 @@ function OnDirectMessage(message) {
         let cmd = message.content.toLowerCase();
         if (cmd === '!help') {
             Help(message, null);
-            message.channel.send(`Please note all commands must be done inside a server with me in it. It is recommended to use !help there instead.`)
+            message.channel.send(`Please note all commands must be done inside a server with me in it. It is recommended to use !help there instead.`);
         }
         else
-            message.channel.send(`Commands must be done inside a server with me in it. Also note your server may have changed my prefix, use !prefix there to display my prefix`)
+            message.channel.send(`Commands must be done inside a server with me in it. Also note your server may have changed my prefix, use !prefix there to display my prefix`);
     }
     //form log content
     let date = new Date(message.createdTimestamp);
@@ -189,7 +187,7 @@ function RemoveGuild(guild) {
     activeHelps.forEach((value, key) => {
         if (value.message.guild.id == guild.id) droppedIds.push(key);
     });
-    if (droppedIds.length >= 1) console.warn(`Removed from guild ${guild.name} with ${droppedIds.length} active help commands.`)
+    if (droppedIds.length >= 1) console.warn(`Removed from guild ${guild.name} with ${droppedIds.length} active help commands.`);
     droppedIds.forEach((value) => activeHelps.delete(value));
 }
 exports.RemoveGuild = RemoveGuild;

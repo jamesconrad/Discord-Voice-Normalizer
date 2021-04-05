@@ -51,7 +51,7 @@ client.once('disconnect', () => {
 //log and create a table for any guilds the bot is added to
 client.on('guildCreate', guild => {
     console.log(`Added to Guild: ${guild.name}`);
-    database.CreateGuild(guild)
+    database.CreateGuild(guild);
 });
 //log and delete the table for any guilds the bot is removed from
 client.on('guildDelete', guild => {

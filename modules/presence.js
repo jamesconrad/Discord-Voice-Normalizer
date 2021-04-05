@@ -21,8 +21,8 @@ function Initialize(_client) {
 exports.Initialize = Initialize;
 
 function SetDefault(_type, _name, _status) {
-    if (!validTypes.includes(_type)) return console.log(`ERROR: Invalid presence type: ${_type}.`)
-    else if (!validStatus.includes(_status)) return console.log(`ERROR: Invalid presence status: ${_status}.`)
+    if (!validTypes.includes(_type)) return console.log(`ERROR: Invalid presence type: ${_type}.`);
+    else if (!validStatus.includes(_status)) return console.log(`ERROR: Invalid presence status: ${_status}.`);
     defaultPresence = { activity: { name: _name, type: _type }, status: _status }
     Tick();
 }
@@ -93,7 +93,7 @@ async function AddRepeatingPresence(_type, _name, _status, _time = 0, _callback 
     else if (_callbackMode < 0 || _callbackMode > 2) return console.log(`ERROR: Invalid callback mode: ${_time} is not within range of 0 - 2 (inclusive).`);
     let event = { enqueue: [{ activity: { name: _name, type: _type }, status: _status }, _time, _callback, _callbackMode], interval: _interval, repeatCount: _repeatCount };
     //repeatingEvents.push(event);
-    if (_startNow) ProcessRepeatingPresence(event)
+    if (_startNow) ProcessRepeatingPresence(event);
     else setTimeout(() => ProcessRepeatingPresence(event), event.interval);
 }
 exports.AddRepeatingPresence = AddRepeatingPresence;
@@ -108,13 +108,13 @@ function RepeatPresence(event) {
 }
 
 function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve,ms))
+    return new Promise(resolve => setTimeout(resolve,ms));
 }
 
 async function ProcessRepeatingPresence(event) {
     return new Promise(async resolve => {
         while(RepeatPresence(event)) {
-            await timeout(event.interval)
+            await timeout(event.interval);
         }
         resolve();
     })

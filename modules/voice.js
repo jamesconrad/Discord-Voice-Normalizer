@@ -44,7 +44,7 @@ async function userJoinedVoice(voiceState) {
         console.log(voiceState);
     }
     //check if we are tracking their channel
-    const guildNormal = guildNormals.get(member.voice.channel.id);
+    const guildNormal = guildNormals.get(voiceState.channelID);
     if (guildNormal) {
         //check if we are tracking them, and begin tracking if not
         if (!guildNormal.userStats.get(member.user.id)) {
@@ -70,9 +70,8 @@ async function userLeftVoice(voiceState) {
     const guildNormal = guildNormals.get(voiceState.channelID);
     if (guildNormal) {
         //stop tracking the user if they are being tracked
-        if (guildNormal.userStats.get(member.user.id)) {
+        if (guildNormal.userStats.get(member.user.id))
             guildNormal.userStats.delete(member.user.id);
-        }
 
         //count current bots in voice channel
         let botCount = 0;
@@ -110,17 +109,13 @@ async function joinChannel(message, args) {
     //confirm if channel is joinable
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) return message.channel.send('You need to be in a voice channel for me to join!');
-    const permissions = voiceChannel.permissionsFor(message.guild.me);
-    if (!permissions.has('VIEW_CHANNEL')) {
-        return message.channel.send('I need permissions to view your voice channel!');
-    } else if (!permissions.has('CONNECT')){
-        return message.channel.send('I need the permissions to join your voice channel!');
-    } else if (!permissions.has('SPEAK')) {
-        return message.channel.send('Due to a restriction imposed by discord API, I need permissions to speak in that channel. Please note I will only be transmitting silence, and if you wish you may Server Mute me.');
-    } else if (voiceChannel.full) {
-        return message.channel.send('Your voice channel is full. Expand the limit or try again later.');
-    }
     if (voiceChannel.members.filter(user => user.id === client.user.id).size >= 1) return message.channel.send("I'm already in here!");
+
+    const permissions = voiceChannel.permissionsFor(message.guild.me);
+    if (!permissions.has('VIEW_CHANNEL')) return message.channel.send('I need permissions to view your voice channel!');
+    else if (!permissions.has('CONNECT')) return message.channel.send('I need the permissions to join your voice channel!');
+    else if (!permissions.has('SPEAK')) return message.channel.send('Due to a restriction imposed by discord API, I need permissions to speak in that channel. Please note I will only be transmitting silence, and if you wish you may Server Mute me.');
+    else if (voiceChannel.full) return message.channel.send('Your voice channel is full. Expand the limit or try again later.');
 
     //attempt joining
     try {
@@ -182,11 +177,10 @@ async function autoleaveChannel(guildNormal) {
 
 async function leaveChannel(message, args) {
     let guildNormal;
-    if (guildNormals.has(message.member.voice.channelID)) {
+    if (guildNormals.has(message.member.voice.channelID)) 
         guildNormal = guildNormals.get(message.member.voice.channel.id);
-    } else {
+    else
         return message.channel.send('I need to be in your voice channel to leave it!');
-    }
 
     guildNormals.delete(guildNormal.connection.channel.id);
     console.log(`Leaving voice channel: ${guildNormal.connection.channel.guild.name} -> ${guildNormal.connection.channel.name}\n\tCurrently in ${guildNormals.size} channels.`);
@@ -196,11 +190,10 @@ exports.leaveChannel = leaveChannel;
 
 async function leaveChannelById(channelID) {
     let guildNormal;
-    if (guildNormals.has(channelID)) {
+    if (guildNormals.has(channelID))
         guildNormal = guildNormals.get(channelID);
-    } else {
+    else
         return;
-    }
 
     guildNormals.delete(channelID);
     console.log(`Leaving voice channelID: ${channelID}\tCurrently in ${guildNormals.size} channels.`);
@@ -248,7 +241,7 @@ async function EndRecording(guildNormal, user) {
     const userStat = guildNormal.userStats.get(user.id);
     if (userStat === undefined) return; //the user left the voice channel before stopping their transmission
     if (userStat.perceivedTotalSampleAvg === undefined) {
-        console.log('End Recording error printout:')
+        console.log('End Recording error printout:');
         console.log(userStat);
     }
     let dB = ToDecibels(userStat.perceivedTotalSampleAvg / userStat.perceivedSamples);
@@ -265,11 +258,10 @@ exports.EndRecording = EndRecording;
  */
 async function Normalize(message, args) {
     let guildNormal;
-    if (guildNormals.has(message.member.voice.channelID)) {
+    if (guildNormals.has(message.member.voice.channelID))
         guildNormal = guildNormals.get(message.member.voice.channel.id);
-    } else {
+    else
         return message.channel.send('I need to be in your voice channel to calculate normals!');
-    }
 
     let retString = ``;
     let quietest;
@@ -289,7 +281,7 @@ async function Normalize(message, args) {
         retString += `\n-b or -bots: allows bots to be included in the normalization.`;
         retString += `\n-t or -test: populates the results with 4 fake users.`;
         retString += `\nExample: !n 50 -a : determines user volumes in relation to half room average`;
-        return message.channel.send(retString)
+        return message.channel.send(retString);
     }
     args.forEach(a => {
         let n = Number(a);
@@ -297,7 +289,7 @@ async function Normalize(message, args) {
 
         if (a == '-i' || a == '-ignore') {
             argFlags.ignoreSender = true;
-            ignoredUsers.push(message.member.id)
+            ignoredUsers.push(message.member.id);
         }
         else if (a == '-a' || a == '-average') {
             argFlags.useAverageVol = true;
@@ -315,12 +307,12 @@ async function Normalize(message, args) {
     }
 
     //filter out all users that are bots, or removed via args
-    let filteredUserStats = []
+    let filteredUserStats = [];
     guildNormal.userStats.forEach(userStat => {
         if (ignoredUsers.includes(userStat.user.id)) return;
         else if (userStat.user.id == client.user.id) return;
         else if (userStat.user.bot && argFlags.allowBots == false ) return;
-        filteredUserStats.push(userStat)
+        filteredUserStats.push(userStat);
     });
     if (!(filteredUserStats.length > 0)) return message.channel.send("Error: All users in chat are being filtered out. Try removing some filters you have set.");
     else if (filteredUserStats.length == 1 && !argFlags.test) retString += "Warning: There is only 1 non filtered user. Try adjusting your filters if they are set, or try using the -test argument if this is a test.";
@@ -350,9 +342,8 @@ async function Normalize(message, args) {
     });
     avg = totalSampleVol / finalUserStats.length;
 
-    if (finalUserStats.length <= 0) {
-        return message.channel.send(`Nobody has talked yet, try again after atleast one non-bot user has spoken`)
-    }
+    if (finalUserStats.length <= 0)
+        return message.channel.send(`Nobody has talked yet, try again after atleast one non-bot user has spoken`);
 
     //setup outputs
     retString += `Set the following people to the following volumes:`;
@@ -387,11 +378,10 @@ exports.Normalize = Normalize;
 //displays user volumes of requested channel
 function DisplayVolume(message, args) {
     let guildNormal;
-    if (guildNormals.has(message.member.voice.channelID)) {
+    if (guildNormals.has(message.member.voice.channelID))
         guildNormal = guildNormals.get(message.member.voice.channel.id);
-    } else {
+    else
         return message.channel.send('I need to be in your voice channel to display user volumes!');
-    }
     let s = 'Listing perceived user volumes:\n';
     guildNormal.userStats.forEach(user => { if (!user.user.bot) s += `${user.user.username} -> ${user.perceivedVolume.toFixed(2)}dB\n` });
     return message.channel.send(s);
@@ -402,7 +392,7 @@ function DisplayVolume(message, args) {
  * @param {Int} num - Sum of volume samples squared.
  */
 function ToDecibels(num) {
-    return 20 * Math.log10(num)
+    return 20 * Math.log10(num);
 }
 exports.ToDecibels = ToDecibels;
 
@@ -414,7 +404,7 @@ function RemoveGuild(guild) {
     guildNormals.forEach((n, k) => {
         if (n.guildId == guild.id) {
             guildNormals.delete(k);
-            console.log(`\tKicked from guild ${guild.name} while in voice channel -> ${n.voiceChannel.name}.\n\tCurrently in ${guildNormals.size} channels.`)
+            console.log(`\tKicked from guild ${guild.name} while in voice channel -> ${n.voiceChannel.name}.\n\tCurrently in ${guildNormals.size} channels.`);
         }
     });
 }

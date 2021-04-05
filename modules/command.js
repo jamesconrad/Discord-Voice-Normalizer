@@ -36,8 +36,8 @@ exports.Initialize = Initialize;
 //bit is the nth bit in the primarydb disabled_modules (database.GetGuildConfig(guild_id).disabled_modules)
 //1's bit must alwasy be 0, as it represents untoggleable modules, valid id's start at 1
 function RegisterModule(moduleName, commandArray, toggleable, bit) {
-    if (toggleable && bit <= 0) return console.log("ERROR: Toggleable modules must use a positive ID, excluding 0.")
-    else if (bit == 1) return console.log("Bit value 1 is reserved for invalid command notification toggle")
+    if (toggleable && bit <= 0) return console.log("ERROR: Toggleable modules must use a positive ID, excluding 0.");
+    else if (bit == 1) return console.log("Bit value 1 is reserved for invalid command notification toggle");
     else if (!toggleable) bit = 0;
 
     moduleName = moduleName.toLowerCase();
@@ -70,11 +70,8 @@ function RegisterCommand(moduleName, command, callback) {
             exists = true;
     });
 
-    if (exists) {
-        return console.log(`ERROR: Attempted to add command ${command} but it already exists`)
-    } else {
-        moduleCommands.get(moduleName).commands.set(command, callback);
-    }
+    if (exists) return console.log(`ERROR: Attempted to add command ${command} but it already exists`);
+    else moduleCommands.get(moduleName).commands.set(command, callback);
 }
 
 //handles dispatching all commands from every message
@@ -153,9 +150,11 @@ exports.ParseMessage = ParseMessage;
 function ChangePrefix(message, args) {
     //verify permissions, arg count, new prefix length, and filter escape characters
     if (!message.member.hasPermission('ADMINISTRATOR')) return message.channel.send(`You need the administrator permission to use this command.`);
+    
     if (args.length < 1) return message.channel.send('You need to specify the new prefix.');
     else if (args.length > 1) return message.channel.send('You cannot specify more than one new prefix');
     else if (args[0].length > 1) return message.channel.send('Prefix must be a single character.');
+
     guildConfig = database.GetGuildConfig(message.guild.id);
     guildConfig.prefix = args[0];
     database.UpdateGuildConfig(guildConfig);
@@ -188,7 +187,8 @@ function NotifyInvalidCommand(message, args) {
 function ToggleModule(message, args) {
     //args are the modules to toggle
     if (!message.member.hasPermission('ADMINISTRATOR')) return message.channel.send(`You need the administrator permission to use this command.`);
-    if (args.length < 1) return message.channel.send("You need to specify one or more modules to toggle.")
+    if (args.length < 1) return message.channel.send("You need to specify one or more modules to toggle.");
+    
     let results = {
         invalid: [],
         toggled_on: [],
@@ -220,34 +220,34 @@ function ToggleModule(message, args) {
     //form response
     let response = '';
     if (results.invalid.length > 0) {
-        if (results.invalid.length == 1) response += `${results.invalid[0]} is not a valid module`
+        if (results.invalid.length == 1) response += `${results.invalid[0]} is not a valid module`;
         else {
-            response += 'These are not valid modules: '
-            results.invalid.forEach(m => response += `${m} `)
+            response += 'These are not valid modules: ';
+            results.invalid.forEach(m => response += `${m} `);
         }
         response += '.\n';
     }
     if (results.forbidden.length > 0) {
-        if (results.forbidden.length == 1) response += `${results.forbidden[0]} cannot be disabled`
+        if (results.forbidden.length == 1) response += `${results.forbidden[0]} cannot be disabled`;
         else {
-            response += 'These modules cannot be disabled: '
-            results.forbidden.forEach(m => response += `${m} `)
+            response += 'These modules cannot be disabled: ';
+            results.forbidden.forEach(m => response += `${m} `);
         }
         response += '.\n';
     }
     if (results.toggled_off.length > 0) {
-        if (results.toggled_off.length == 1) response += `${results.toggled_off[0]} has been disabled`
+        if (results.toggled_off.length == 1) response += `${results.toggled_off[0]} has been disabled`;
         else {
-            response += 'These modules have been disabled: '
-            results.toggled_off.forEach(m => response += `${m} `)
+            response += 'These modules have been disabled: ';
+            results.toggled_off.forEach(m => response += `${m} `);
         }
         response += '.\n';
     }
     if (results.toggled_on.length > 0) {
-        if (results.toggled_on.length == 1) response += `${results.toggled_on[0]} has been enabled`
+        if (results.toggled_on.length == 1) response += `${results.toggled_on[0]} has been enabled`;
         else {
-            response += 'These modules have been enabled: '
-            results.toggled_on.forEach(m => response += `${m} `)
+            response += 'These modules have been enabled: ';
+            results.toggled_on.forEach(m => response += `${m} `);
         }
         response += '.\n';
     }
@@ -267,8 +267,7 @@ function ToggleBit(bitNumber, value) {
 function IsEnabled(moduleName, guild_disabled_modules) {
     let m = moduleName.toLowerCase();
     //default disable if moduleName is invalid
-    if (!moduleCommands.has(m))
-        return false;
+    if (!moduleCommands.has(m)) return false;
     return (guild_disabled_modules & (1 << moduleCommands.get(m).toggle_bit)) == 0
 }
 exports.IsEnabled = IsEnabled;

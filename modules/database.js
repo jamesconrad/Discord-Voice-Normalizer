@@ -19,7 +19,7 @@ async function Initialize() {
             if (err) {
                 if (err.errno == 14) {
                     //db was not found, generate a new one instead.
-                    console.log(`PrimaryDB not found, attempting creation of new one.`)
+                    console.log(`PrimaryDB not found, attempting creation of new one.`);
                     await GeneratePrimaryDatabase();
                     resolve();
                 }
@@ -32,7 +32,7 @@ async function Initialize() {
         });
         //db loaded or created, continue with setup
         await BuildGuildCache();
-        console.log('Database Initialized.')
+        console.log('Database Initialized.');
         resolve();  
     });
 }
@@ -70,7 +70,7 @@ function run(command) {
 exports.run = run;
 async function runPromise(command) {
     return new Promise(async resolve => {
-        await primarydb.run(command)
+        await primarydb.run(command);
         resolve();
     });
 }
@@ -205,10 +205,10 @@ async function GeneratePrimaryDatabase() {
         await runPromise(sqlcreatecommand);
 
         //10s timeout to ensure db setup is complete
-        console.log(`Waiting 10s to proceed...`)
+        console.log(`Waiting 10s to proceed...`);
         setTimeout(() => {
-            console.log(`PrimaryDB generation complete.`)
-            resolve()
+            console.log(`PrimaryDB generation complete.`);
+            resolve();
         }, 10000);
     });
 }

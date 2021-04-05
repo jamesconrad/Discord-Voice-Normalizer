@@ -163,7 +163,7 @@ async function Trivia(message, args) {
             //alltime score
             let sfield = {name: `All Time Top Server${table.length > 1 ? 's' : ''}:`, value: ``, inline: true};
             for (i = 0; i < table.length && i < 10; i++) {
-                e = table[i];
+                let e = table[i];
                 if (e.total_score <= 0) break;
                 sfield.value += `${unescape(e.name)}: ${e.total_score}\n`;
             }
@@ -192,7 +192,10 @@ async function Trivia(message, args) {
         resp.on('end', async() => {
             let question = JSON.parse(data);
             //handle response codes
-            if (question.response_code == 2) message.channel.send(`Trivia API Error: ${apicall} returned invalid parameter`)
+            if (question.response_code == 2) {
+                message.channel.send(`Trivia API Error: ${apicall} returned invalid parameter`);
+                console.log(`Trivia API Error: ${apicall} returned invalid parameter`);
+            }
             else if (question.response_code == 4) {
                 await RefreshTriviaToken(message.guild.id);
                 return Trivia(message, args);
