@@ -15,7 +15,8 @@ const reactArray = ['◀️','▶️','⏪','⏩','❌'];
 function Initialize() {
     //register commands
     let c = [
-        { command: 'help', callback: Help }
+        { command: 'help', callback: Help },
+        { command: 'cid', callback: ChannelID }
     ];
     command.RegisterModule("help", c, false, 0);
 
@@ -25,6 +26,7 @@ function Initialize() {
         description: `Module: Help\nTo navigate the menu click a react emote at the bottom.`,
         fields: [
             {name: '!help', value: 'Display this menu'},
+            {name: '!cid', value: 'Display current channel id'},
             {name: 'Reporting an error/issue', value: 'Simply send a dm to this bot, note the dm will be recorded.\nPlease include any additional information you can, and only send a single message per error.'},
             {name: 'Source', value: 'github.com/jamesconrad/Discord-Voice-Normalizer'}
         ]
@@ -191,3 +193,7 @@ function RemoveGuild(guild) {
     droppedIds.forEach((value) => activeHelps.delete(value));
 }
 exports.RemoveGuild = RemoveGuild;
+
+function ChannelID(message, args) {
+    message.channel.send(`${message.channel.name} id: ${message.channel.id}`);
+}
