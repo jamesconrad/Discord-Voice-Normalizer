@@ -24,7 +24,7 @@ client.once('ready', async () => {
     //initialize all modules
     console.log('Performing module setups...');
     await database.Initialize();
-    helpModule.Initialize();
+    helpModule.Initialize(client);
     command.Initialize(client);
     triviaModule.Initialize();
     voiceModule.Initialize(client);

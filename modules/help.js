@@ -2,8 +2,10 @@
 const Discord = require('discord.js');
 const command = require('../modules/command');
 const database = require('../modules/database');
+const config = require('../config.json');
 const activeHelps = new Map();
 let pages = [];
+let client;
 
 var fs = require('fs');
 var csvWriter = require('csv-write-stream');
@@ -12,7 +14,7 @@ var dmLog = csvWriter({sendHeaders: false});
 
 const reactArray = ['◀️','▶️','⏪','⏩','❌'];
 
-function Initialize() {
+function Initialize(botClient) {
     //register commands
     let c = [
         { command: 'help', callback: Help },
@@ -32,6 +34,7 @@ function Initialize() {
         ]
     };
     AddPage('help', page);
+    client = botClient;
 }
 exports.Initialize = Initialize;
 
@@ -172,6 +175,8 @@ function OnDirectMessage(message) {
     }
     //form log content
     let date = new Date(message.createdTimestamp);
+    if (config.enableErrorReportingToChannel)
+        client.channels.cache.get(config.errorReportChannelID).send(`${message.author.username}: ${message.content}`);
     console.log(`${message.author.username}: ${message.content}, ${date.toLocaleString()}`);
     dmLog.write({
         timeStamp: `${date.toLocaleString()}`,
