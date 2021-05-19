@@ -257,22 +257,9 @@ exports.EndRecording = EndRecording;
  * @param {string[]} args - Arguments from the execution command. Only first argument is used currently.
  */
 async function Normalize(message, args) {
-    let guildNormal;
-    if (guildNormals.has(message.member.voice.channelID))
-        guildNormal = guildNormals.get(message.member.voice.channel.id);
-    else
-        return message.channel.send('I need to be in your voice channel to calculate normals!');
 
+    //check for help arg before checking if inside voice channel
     let retString = ``;
-    let quietest;
-    let min = 9007199254740992;//max size of int
-    let avg = 0;
-    let totalSampleVol = 0;
-    let desiredVol = -1;
-    let argFlags = { ignoreSender: false, useAverageVol: false, allowBots: false, test: false };
-    let ignoredUsers = [];
-
-    //parse args
     if (args.length > 0 && (args[0] == '-h' || args[0] == '-help')) {
         retString = "Valid arguments are:";
         retString += "\n[number] : any number within 0 - 200 (inclusive)";
@@ -283,6 +270,22 @@ async function Normalize(message, args) {
         retString += `\nExample: !n 50 -a : determines user volumes in relation to half room average`;
         return message.channel.send(retString);
     }
+
+    let guildNormal;
+    if (guildNormals.has(message.member.voice.channelID))
+        guildNormal = guildNormals.get(message.member.voice.channel.id);
+    else
+        return message.channel.send('I need to be in your voice channel to calculate normals!');
+
+    let quietest;
+    let min = 9007199254740992;//max size of int
+    let avg = 0;
+    let totalSampleVol = 0;
+    let desiredVol = -1;
+    let argFlags = { ignoreSender: false, useAverageVol: false, allowBots: false, test: false };
+    let ignoredUsers = [];
+
+    //parse args
     args.forEach(a => {
         let n = Number(a);
         if (n !== NaN && (n > 0 && n <= 200)) desiredVol = n;
