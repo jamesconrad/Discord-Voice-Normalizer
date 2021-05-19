@@ -1,7 +1,7 @@
 const sqlite = require('sqlite3');
 const config = require('../config.json');
 const validator = require('validator');
-
+const fs = require('fs');
 let primarydb;
 const guildCache = new Map();
 const default_cfg = {
@@ -169,6 +169,11 @@ exports.UpdateGuildConfig = UpdateGuildConfig;
 
 async function GeneratePrimaryDatabase() {
     return new Promise(async resolve => {
+        if (!fs.existsSync('./db')) {
+            console.log('db folder not found, creating one.');
+            fs.mkdirSync('./db');
+        }
+        
         primarydb = await new sqlite.Database('./' + config.dbfile, sqlite.OPEN_CREATE | sqlite.OPEN_READWRITE, (err) => {
             if (err) return console.log(err.message);
         });
