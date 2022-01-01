@@ -178,7 +178,9 @@ async function Trivia(message, args) {
     let token = trivia.apiTokens.get(message.guild.id);
     let apicall = `https://opentdb.com/api.php?token=${token}`;
     //add args to the apicall
-    if (repeatCount > 1) apicall += `&amount=${repeatCount}`;
+    if (repeatCount > 1) 
+        if (repeatCount > 31)
+            return message.channel.send(`Sorry, 31 questions maximum.`);
     else apicall += `&amount=1`;
     if (category) apicall += `&category=${category}`;
     if (difficulty) apicall += `&difficulty=${difficulty}`;
