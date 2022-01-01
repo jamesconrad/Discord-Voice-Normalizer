@@ -2,6 +2,8 @@
 Discord bot to normalize peoples voice in a channel.
 
 ## Adding the bot to your server:
+Bot is currently offline, and will be for the foreseeable future until I can find the time to fix my server's hardware. In the meantime hosting your own version is fairly straight forward, instructions are at the bottom of this readme.<br/>
+Sorry.<br/>
 https://discord.com/oauth2/authorize?client_id=644968401969741838&scope=bot&permissions=3165184
 
 ## Features:
@@ -26,5 +28,8 @@ The bot only stores audio as a user is speaking, after the average volume of any
 The bot will leave a channel only when asked using !leavevoice, or when it is the last user in the voice channel.
 
 ## Hosting your own version:
-Make sure to rename sample_config.json to config.json and edit token to be your bot's token.
-To enable auto-updates to the script, change auto_update in config.json to true, and run the script via bot.sh
+1. Make sure node is up to date, bot requires atleast version 12 <br/>
+2. Make sure to rename ```sample_config.json``` to ```config.json``` and edit token to be your bot's token.<br/>
+3. To generate an invite link, update the following link with your bot's client id (found on discord developer page)<br/> https://discord.com/oauth2/authorize?client_id=YourClientIDHere&scope=bot&permissions=3165184<br/>
+4. To start the bot use the command ```node index.js``` while inside the folder. For auto-updates and auto-restarting after fatal errors see below.<br/>
+5. To enable auto-updates to the script, change auto_update in config.json to true, and run the script via bot.sh<br/>
