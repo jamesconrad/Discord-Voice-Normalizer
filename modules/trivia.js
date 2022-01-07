@@ -26,7 +26,8 @@ let trivia = {
 async function Initialize() {
     //register commands
     let c = [
-        { command: 'trivia', callback: Trivia }
+        { command: 'trivia', callback: Trivia },
+        //{ command: 'tsr', callback: ResetTriviaScores }
     ];
     command.RegisterModule("trivia", c, true, 3);
     
@@ -178,14 +179,16 @@ async function Trivia(message, args) {
     let token = trivia.apiTokens.get(message.guild.id);
     let apicall = `https://opentdb.com/api.php?token=${token}`;
     //add args to the apicall
-    if (repeatCount >= 1)
+    if (repeatCount >= 1) {
         apicall += `&amount=${repeatCount}`;
         if (repeatCount > 31)
             return message.channel.send(`Sorry, 31 questions maximum.`);
+    }
     else apicall += `&amount=1`;
     if (category) apicall += `&category=${category}`;
     if (difficulty) apicall += `&difficulty=${difficulty}`;
 
+    console.log(apicall);
     //fetch the trivia question
     https.get(apicall, async (resp) => {
         let data = '';
@@ -209,10 +212,56 @@ async function Trivia(message, args) {
             //fetch the first (only) question
             let numQuestions = question.results.length;
             let i = 0;
-            while (i < question.results.length) {
-                await RunTriviaQuestion(question.results[i], message, numQuestions > 1 ? `Question ${i+1}/${numQuestions}` : ``);
+            let scores = new Map();
+            while (i < numQuestions) {
+                await RunTriviaQuestion(question.results[i], message, numQuestions > 1 ? `Question ${i+1}/${numQuestions}` : ``).then(results => {
+                    //combine results of this question with total for this set of questions
+                    results.forEach((suPair, user) => {
+                        //existing player got points
+                        if (scores.has(user)){
+                            let suPairUpdated = scores.get(user);
+                            suPairUpdated.score += suPair.score;
+                            scores.set(user, suPair);
+                        }
+                        //new player got points
+                        else scores.set(user, suPair);
+                    }); 
+                });
                 i++;
-                await timeout(config.triviaRepeatDelay);
+                //skip timeout if all questions are finished
+                if (i != numQuestions)
+                    await timeout(config.triviaRepeatDelay);
+            }
+            //only give rankings if multiple questions
+            if (numQuestions > 1) {
+                //prep embed
+                let embed = new Discord.MessageEmbed()
+                    .setTitle("Final Results")
+                    .setColor('#0099ff')
+                let finalScores = [];
+                //build and sort new array with names and scores
+                scores.forEach((suPair, user) => {
+                    finalScores.push({n: suPair.user.username, s: suPair.score});
+                });
+                finalScores.sort((a,b) => (a.score > b.score) ? 1 : -1);
+                //if sombody got an answer correct
+                if (finalScores.length >= 1) {
+                    embed.setDescription(`:crown: ${finalScores[0].n} :crown:`)
+                    for (i = 0; i < finalScores.length; i++){
+                        let rank = "";
+                        if (i == 0) rank = ":first_place:";
+                        else if (i == 1) rank = ":second_place:";
+                        else if (i == 2) rank = ":third_place:";
+                        else rank = `${i+1}`;
+                        embed.fields.push({name: `Breakdown:`, value:`${rank}\t - ${finalScores[i].n}:\t ${finalScores[i].s}`});
+                    }
+                    return message.channel.send(embed);
+                }
+                //nobody got any right
+                else {
+                    embed.setDescription(`:slight_frown: Nobody got a single question correct :slight_frown:`)
+                    return message.channel.send(embed);
+                }
             }
         });
     }).on("error", (err) => {
@@ -294,11 +343,22 @@ async function RunTriviaQuestion(question, message, footer) {
                 //build response string
                 finalWinners.forEach(user => correct_users += ` ${user.username},`);
                 disqualified.forEach(u => disqual_users += ` ${u},`);
+
+                let scoreUpdate = new Map();
+                finalWinners.forEach(element => {
+                    scoreUpdate.set(element.id, {score: questionReward, user: element});
+                });
+
                 //update scores
                 ModTriviaScores(finalWinners, questionReward, message.guild);
                 //bonus of +1 for being first to answer, only if more than one got it right
-                if (finalWinners.length > 1)
+                if (finalWinners.length > 1) {
                     ModTriviaScores(finalWinners[0], 1, message.guild);
+                    let bonusUser = scoreUpdate.get(finalWinners[0].id)
+                    bonusUser.score++;
+                    scoreUpdate.set(bonusUser.user.id, bonusUser);
+                    scoreUpdate.set(element.id, {score: questionReward, user: element});
+                }
                 //remove trailing commas
                 correct_users = correct_users.slice(0, -1);
                 disqual_users = disqual_users.slice(0, -1);
@@ -310,7 +370,7 @@ async function RunTriviaQuestion(question, message, footer) {
                     embed.fields.push({name: 'Disqualified Players', value: disqual_users});
 
                 m.edit(embed);
-                resolve();
+                resolve(scoreUpdate);
             });
         });
     });
@@ -441,3 +501,7 @@ function DecodeAmpersandHTML(str) {
         return chr || s;
     });
 };
+
+function ResetTriviaScores(message, args) {
+    database.run('UPDATE users SET monthlyScore = 0;');
+}
