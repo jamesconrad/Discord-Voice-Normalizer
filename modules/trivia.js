@@ -181,8 +181,8 @@ async function Trivia(message, args) {
     //add args to the apicall
     if (repeatCount >= 1) {
         apicall += `&amount=${repeatCount}`;
-        if (repeatCount > 31)
-            return message.channel.send(`Sorry, 31 questions maximum.`);
+        if (repeatCount > 50)
+            return message.channel.send(`Sorry, 50 questions maximum.`);
     }
     else apicall += `&amount=1`;
     if (category) apicall += `&category=${category}`;
@@ -216,16 +216,20 @@ async function Trivia(message, args) {
             while (i < numQuestions) {
                 await RunTriviaQuestion(question.results[i], message, numQuestions > 1 ? `Question ${i+1}/${numQuestions}` : ``).then(results => {
                     //combine results of this question with total for this set of questions
+                    console.log(`question ${i} results`);
                     results.forEach((suPair, user) => {
                         //existing player got points
                         if (scores.has(user)){
                             let suPairUpdated = scores.get(user);
+                            let temp = suPairUpdated.score;
                             suPairUpdated.score += suPair.score;
-                            scores.set(user, suPair);
+                            scores.set(user, suPairUpdated);
                         }
                         //new player got points
-                        else scores.set(user, suPair);
-                    }); 
+                        else {
+                            scores.set(user, suPair);
+                        }
+                    });
                 });
                 i++;
                 //skip timeout if all questions are finished
@@ -243,7 +247,8 @@ async function Trivia(message, args) {
                 scores.forEach((suPair, user) => {
                     finalScores.push({n: suPair.user.username, s: suPair.score});
                 });
-                finalScores.sort((a,b) => (a.score > b.score) ? 1 : -1);
+                finalScores.sort((a,b) => (a.s > b.s) ? -1 : 1);
+                console.log(finalScores);
                 //if sombody got an answer correct
                 if (finalScores.length >= 1) {
                     embed.setDescription(`:crown: ${finalScores[0].n} :crown:`)
