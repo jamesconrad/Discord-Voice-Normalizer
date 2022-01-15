@@ -251,6 +251,7 @@ async function Trivia(message, args) {
                 console.log(finalScores);
                 //if sombody got an answer correct
                 if (finalScores.length >= 1) {
+                    let breakdowntext = '';
                     embed.setDescription(`:crown: ${finalScores[0].n} :crown:`)
                     for (i = 0; i < finalScores.length; i++){
                         let rank = "";
@@ -258,8 +259,9 @@ async function Trivia(message, args) {
                         else if (i == 1) rank = ":second_place:";
                         else if (i == 2) rank = ":third_place:";
                         else rank = `${i+1}`;
-                        embed.fields.push({name: `Breakdown:`, value:`${rank}\t - ${finalScores[i].n}:\t ${finalScores[i].s}`});
+                        breakdowntext += `${rank}\t - ${finalScores[i].n}:\t ${finalScores[i].s}\n`
                     }
+                    embed.fields.push({name: `Breakdown:`, value: breakdowntext});
                     return message.channel.send(embed);
                 }
                 //nobody got any right
